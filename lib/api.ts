@@ -185,8 +185,6 @@ class ApiClient {
       ...options.headers,
     };
 
-    console.log(`🌐 API Request: ${options.method || 'GET'} ${fullUrl}`);
-
     const response = await fetch(fullUrl, {
       ...options,
       headers,
@@ -300,21 +298,36 @@ class ApiClient {
     ];
   }
 
+  // ============================================================
+  // MEMBERS
+  // ============================================================
+
   async getMembers(teamId: string): Promise<Assignee[]> {
+    if (!teamId) {
+      return [];
+    }
+    
     try {
       const response = await this.request<any>(`/clickup/workspaces/${teamId}/members`);
+      
+      // Backend returns array directly (already mapped m.user in clickup.service.ts)
       const members = response?.members || response || [];
       
+      if (!members || members.length === 0) {
+        return [];
+      }
+      
+      // Handle both formats (raw ClickUp with m.user or pre-mapped)
       return members.map((m: any) => ({
         id: m.user?.id || m.id,
         username: m.user?.username || m.username || m.user?.email || m.email || 'Unknown',
         email: m.user?.email || m.email || '',
         profilePicture: m.user?.profilePicture || m.profilePicture || null,
         color: m.user?.color || m.color || null,
-        initials: m.user?.initials || m.initials || null,
+        initials: m.user?.initials || m.initials || (m.username ? m.username[0].toUpperCase() : null),
       }));
     } catch (e) {
-      console.warn('Failed to get members:', e);
+      console.error('Failed to fetch members:', e);
       return [];
     }
   }
@@ -372,20 +385,17 @@ class ApiClient {
   }
 
   async createTask(data: CreateTaskInput): Promise<Task> {
-    // Build payload matching backend CreateTaskDto exactly
     const payload: Record<string, any> = {
       listId: data.listId,
       name: data.name,
     };
 
-    // Only add optional fields if they have values
     if (data.description) payload.description = data.description;
     if (data.status) payload.status = data.status;
     if (data.priority !== undefined) payload.priority = data.priority;
     if (data.assignees && data.assignees.length > 0) payload.assignees = data.assignees;
     if (data.tags && data.tags.length > 0) payload.tags = data.tags;
     
-    // Dates - backend expects timestamps via @Transform decorator
     if (data.dueDate) {
       const timestamp = new Date(data.dueDate).getTime();
       if (!isNaN(timestamp)) payload.dueDate = timestamp;
@@ -395,17 +405,11 @@ class ApiClient {
       if (!isNaN(timestamp)) payload.startDate = timestamp;
     }
     
-    // Time estimate in milliseconds
     if (data.timeEstimate) payload.timeEstimate = data.timeEstimate;
     
-    // Checklists
     if (data.checklist && data.checklist.length > 0) {
       payload.checklist = data.checklist;
     }
-
-    console.log('📤 Creating task - API URL:', API_URL);
-    console.log('📤 Creating task - Payload:', JSON.stringify(payload, null, 2));
-    console.log('📤 Creating task - Token exists:', !!this.getToken());
 
     try {
       const task = await this.request<Task>('/tasks', {
@@ -413,10 +417,9 @@ class ApiClient {
         body: JSON.stringify(payload),
       });
       
-      console.log('✅ Task created successfully:', task?.id);
       return task;
     } catch (error) {
-      console.error('❌ Failed to create task:', error);
+      console.error('Failed to create task:', error);
       throw error;
     }
   }
@@ -967,22 +970,12 @@ class ApiClient {
   // WORKORA: AI FEATURES
   // ============================================================
 
-  /**
-   * Extract tasks from image (base64)
-   * POST /api/1/ai/extract-tasks
-   */
   async extractTasksFromImage(imageBase64: string, listId: string): Promise<{ tasks: ExtractedTaskResult[] }> {
-    console.log('🤖 AI Extract from Image - listId:', listId);
-    console.log('🤖 AI Extract from Image - API URL:', API_URL);
-    console.log('🤖 AI Extract from Image - Image length:', imageBase64?.length);
-    console.log('🤖 AI Extract from Image - Token exists:', !!this.getToken());
-    
     try {
       const result = await this.request<{ tasks: ExtractedTaskResult[] }>('/ai/extract-tasks', {
         method: 'POST',
         body: JSON.stringify({ image: imageBase64, listId }),
       });
-      console.log('✅ AI Extract from Image - Result:', result);
       return result || { tasks: [] };
     } catch (error) {
       console.error('❌ AI Extract from Image - Error:', error);
@@ -990,22 +983,12 @@ class ApiClient {
     }
   }
 
-  /**
-   * Extract tasks from text
-   * POST /api/1/ai/extract-tasks-text
-   */
   async extractTasksFromText(text: string, listId: string): Promise<{ tasks: ExtractedTaskResult[] }> {
-    console.log('🤖 AI Extract from Text - listId:', listId);
-    console.log('🤖 AI Extract from Text - API URL:', API_URL);
-    console.log('🤖 AI Extract from Text - Text length:', text?.length);
-    console.log('🤖 AI Extract from Text - Token exists:', !!this.getToken());
-    
     try {
       const result = await this.request<{ tasks: ExtractedTaskResult[] }>('/ai/extract-tasks-text', {
         method: 'POST',
         body: JSON.stringify({ text, listId }),
       });
-      console.log('✅ AI Extract from Text - Result:', result);
       return result || { tasks: [] };
     } catch (error) {
       console.error('❌ AI Extract from Text - Error:', error);

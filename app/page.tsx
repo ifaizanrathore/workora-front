@@ -20,8 +20,8 @@ export default function RootPage() {
         
         if (token) {
           setMessage('Loading your workspace...');
-          // Token exists - go to dashboard, let it verify
-          router.replace('/home');
+          // Token exists - go to dashboard home
+          router.replace('/dashboard/home');
         } else {
           setMessage('Redirecting to login...');
           // No token - go to login

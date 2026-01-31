@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { TaskList } from '@/components/tasks/TaskList';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
@@ -10,56 +10,22 @@ import { Loader2, ListTree, Plus } from 'lucide-react';
 
 export default function DashboardPage() {
   const { tasks, setTasks, isModalOpen, isCreateModalOpen, openCreateModal } = useTaskStore();
-  const { currentList, currentWorkspace, currentSpace, setCurrentSpace, setCurrentList, setLists, setSpaces } = useWorkspaceStore();
+  const { 
+    currentList, 
+    currentWorkspace, 
+    currentSpace, 
+    setCurrentWorkspace,
+    setCurrentSpace, 
+    setCurrentList, 
+    setLists, 
+    setSpaces 
+  } = useWorkspaceStore();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize workspace data
-  useEffect(() => {
-    if (currentWorkspace?.id) {
-      initializeWorkspace();
-    }
-  }, [currentWorkspace?.id]);
-
-  // Fetch tasks when list changes
-  useEffect(() => {
-    if (currentList?.id) {
-      fetchTasks();
-    }
-  }, [currentList?.id]);
-
-  const initializeWorkspace = async () => {
-    if (!currentWorkspace?.id) return;
-    
-    setIsInitializing(true);
-    try {
-      // Get spaces
-      const spaces = await api.getSpaces(currentWorkspace.id);
-      setSpaces(spaces);
-      
-      if (spaces && spaces.length > 0) {
-        // Set first space as current
-        const firstSpace = spaces[0];
-        setCurrentSpace(firstSpace);
-        
-        // Get lists from first space
-        const lists = await api.getFolderlessLists(firstSpace.id);
-        setLists(lists);
-        
-        // Auto-select first list
-        if (lists && lists.length > 0) {
-          setCurrentList(lists[0]);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to initialize workspace:', err);
-    } finally {
-      setIsInitializing(false);
-    }
-  };
-
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!currentList?.id) return;
     
     setIsLoading(true);
@@ -74,7 +40,77 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentList?.id, setTasks]);
+
+  // Initialize: First fetch workspaces if not set
+  useEffect(() => {
+    const initWorkspaces = async () => {
+      if (currentWorkspace?.id) return;
+
+      try {
+        const workspaces = await api.getWorkspaces();
+        
+        if (workspaces && workspaces.length > 0) {
+          setCurrentWorkspace(workspaces[0] as any);
+        }
+      } catch (err) {
+        console.error('Failed to fetch workspaces:', err);
+      }
+    };
+
+    initWorkspaces();
+  }, []);
+
+  // Initialize workspace data (spaces, lists) when workspace is set
+  useEffect(() => {
+    let isCancelled = false;
+    
+    const initializeWorkspace = async () => {
+      if (!currentWorkspace?.id) return;
+      
+      setIsInitializing(true);
+      
+      try {
+        const spaces = await api.getSpaces(currentWorkspace.id);
+        if (isCancelled) return;
+        
+        setSpaces(spaces);
+        
+        if (spaces && spaces.length > 0) {
+          const spaceToUse = spaces[0];
+          setCurrentSpace(spaceToUse);
+          
+          const lists = await api.getFolderlessLists(spaceToUse.id);
+          if (isCancelled) return;
+          
+          setLists(lists);
+          
+          if (lists && lists.length > 0) {
+            setCurrentList(lists[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to initialize workspace:', err);
+      } finally {
+        if (!isCancelled) {
+          setIsInitializing(false);
+        }
+      }
+    };
+
+    initializeWorkspace();
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentWorkspace?.id, setSpaces, setCurrentSpace, setLists, setCurrentList]);
+
+  // Fetch tasks when list changes
+  useEffect(() => {
+    if (currentList?.id) {
+      fetchTasks();
+    }
+  }, [currentList?.id, fetchTasks]);
 
   // Show loading while initializing
   if (isInitializing && !currentList) {
@@ -136,7 +172,15 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : (
-          <TaskList tasks={tasks} isLoading={isLoading} />
+          <TaskList 
+            tasks={tasks} 
+            isLoading={isLoading}
+            listId={currentList?.id}
+            workspaceId={currentWorkspace?.id}
+            listName={currentList?.name}
+            onTaskUpdate={fetchTasks}
+            onAddTask={openCreateModal}
+          />
         )}
       </div>
 

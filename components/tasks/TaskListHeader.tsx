@@ -15,6 +15,13 @@ import {
   CircleDot,
   Type,
   X,
+  Search,
+  AlignLeft,
+  CheckSquare,
+  Tag,
+  UserCheck,
+  Link2,
+  Repeat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -39,8 +46,33 @@ export interface TaskListHeaderProps {
   onSort?: (columnId: string, direction: 'asc' | 'desc') => void;
   sortBy?: string;
   sortDirection?: 'asc' | 'desc';
+  onAddField?: (fieldType: FieldType) => void;
   className?: string;
 }
+
+// Field types for Add Field dropdown
+export interface FieldType {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  description?: string;
+}
+
+export const AVAILABLE_FIELD_TYPES: FieldType[] = [
+  { id: 'dropdown', label: 'Dropdown', icon: <ChevronDown className="h-4 w-4" />, description: 'Single select from options' },
+  { id: 'text', label: 'Text', icon: <Type className="h-4 w-4" />, description: 'Short text input' },
+  { id: 'date', label: 'Date', icon: <Calendar className="h-4 w-4" />, description: 'Date picker' },
+  { id: 'textarea', label: 'Text area (Long Text)', icon: <AlignLeft className="h-4 w-4" />, description: 'Multi-line text' },
+  { id: 'number', label: 'Number', icon: <Hash className="h-4 w-4" />, description: 'Numeric value' },
+  { id: 'labels', label: 'Labels', icon: <Tag className="h-4 w-4" />, description: 'Multiple labels/tags' },
+  { id: 'checkbox', label: 'Checkbox', icon: <CheckSquare className="h-4 w-4" />, description: 'Yes/No toggle' },
+  { id: 'assignee', label: 'Assignee', icon: <User className="h-4 w-4" />, description: 'Assign team members' },
+  { id: 'watcher', label: 'Watcher', icon: <Eye className="h-4 w-4" />, description: 'People watching this task' },
+  { id: 'responsible', label: 'Responsible', icon: <UserCheck className="h-4 w-4" />, description: 'Primary responsible person' },
+  { id: 'dependency', label: 'Dependency Task', icon: <Link2 className="h-4 w-4" />, description: 'Link dependent tasks' },
+  { id: 'recurring', label: 'Recurring task', icon: <Repeat className="h-4 w-4" />, description: 'Set repeat schedule' },
+  { id: 'dueDate', label: 'Due date', icon: <Calendar className="h-4 w-4" />, description: 'Task deadline' },
+];
 
 // ============================================================
 // DEFAULT COLUMNS
@@ -246,13 +278,13 @@ const ColumnHeaderItem: React.FC<ColumnHeaderItemProps> = ({
 };
 
 // ============================================================
-// ADD COLUMN DROPDOWN
+// ADD COLUMN / FIELD DROPDOWN
 // ============================================================
 
 interface AddColumnDropdownProps {
   columns: Column[];
   onToggleColumn: (columnId: string) => void;
-  onAddCustomColumn?: () => void;
+  onAddCustomColumn?: (fieldType: FieldType) => void;
 }
 
 const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
@@ -261,6 +293,8 @@ const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
   onAddCustomColumn,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'columns' | 'fields'>('columns');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside
@@ -268,6 +302,7 @@ const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        setSearch('');
       }
     };
 
@@ -275,7 +310,13 @@ const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const hiddenColumns = columns.filter((c) => !c.visible && !c.fixed);
+  const filteredColumns = columns.filter(
+    (c) => !c.fixed && c.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredFields = AVAILABLE_FIELD_TYPES.filter(
+    (f) => f.label.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div ref={dropdownRef} className="relative">
@@ -283,7 +324,7 @@ const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           'flex items-center justify-center w-8 h-8 rounded',
-          'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
+          'text-gray-400 hover:text-purple-600 hover:bg-purple-50',
           'transition-colors'
         )}
       >
@@ -291,41 +332,102 @@ const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
-            Show/Hide Columns
+        <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+          {/* Tabs */}
+          <div className="flex border-b border-gray-100 px-2 mb-2">
+            <button
+              onClick={() => setActiveTab('columns')}
+              className={cn(
+                'flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors',
+                activeTab === 'columns'
+                  ? 'text-purple-600 border-purple-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700'
+              )}
+            >
+              Show/Hide
+            </button>
+            <button
+              onClick={() => setActiveTab('fields')}
+              className={cn(
+                'flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors',
+                activeTab === 'fields'
+                  ? 'text-purple-600 border-purple-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700'
+              )}
+            >
+              Add Field
+            </button>
           </div>
 
-          {columns
-            .filter((c) => !c.fixed)
-            .map((column) => (
-              <button
-                key={column.id}
-                onClick={() => onToggleColumn(column.id)}
-                className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <span className="text-gray-400">{column.icon}</span>
-                <span className="flex-1 text-left">{column.label}</span>
-                {column.visible ? (
-                  <Eye className="h-4 w-4 text-purple-500" />
-                ) : (
-                  <EyeOff className="h-4 w-4 text-gray-300" />
-                )}
-              </button>
-            ))}
+          {/* Search */}
+          <div className="px-2 mb-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+              />
+            </div>
+          </div>
 
-          {onAddCustomColumn && (
-            <>
-              <div className="border-t border-gray-100 my-2" />
-              <button
-                onClick={onAddCustomColumn}
-                className="flex items-center gap-3 w-full px-3 py-2 text-sm text-purple-600 hover:bg-purple-50"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Custom Field</span>
-              </button>
-            </>
-          )}
+          {/* Content */}
+          <div className="max-h-64 overflow-y-auto">
+            {activeTab === 'columns' ? (
+              // Show/Hide Columns
+              <>
+                {filteredColumns.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-gray-500 text-center">No columns found</div>
+                ) : (
+                  filteredColumns.map((column) => (
+                    <button
+                      key={column.id}
+                      onClick={() => onToggleColumn(column.id)}
+                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <span className="text-gray-400">{column.icon}</span>
+                      <span className="flex-1 text-left">{column.label}</span>
+                      {column.visible ? (
+                        <Eye className="h-4 w-4 text-purple-500" />
+                      ) : (
+                        <EyeOff className="h-4 w-4 text-gray-300" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </>
+            ) : (
+              // Add Field Types
+              <>
+                {filteredFields.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-gray-500 text-center">No fields found</div>
+                ) : (
+                  filteredFields.map((field) => (
+                    <button
+                      key={field.id}
+                      onClick={() => {
+                        onAddCustomColumn?.(field);
+                        setIsOpen(false);
+                      }}
+                      className="flex items-start gap-3 w-full p-2 mx-1 rounded-lg text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg text-gray-600 flex-shrink-0">
+                        {field.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900">{field.label}</div>
+                        {field.description && (
+                          <div className="text-xs text-gray-500 truncate">{field.description}</div>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -342,6 +444,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
   onSort,
   sortBy,
   sortDirection,
+  onAddField,
   className,
 }) => {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -411,6 +514,26 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
     [onSort, sortBy, sortDirection]
   );
 
+  // Handle add custom field
+  const handleAddField = useCallback(
+    (fieldType: FieldType) => {
+      // Create new column from field type
+      const newColumn: Column = {
+        id: fieldType.id + '-' + Date.now(),
+        label: fieldType.label,
+        icon: fieldType.icon,
+        width: 120,
+        minWidth: 80,
+        visible: true,
+        sortable: true,
+      };
+
+      onColumnsChange([...columns.filter(c => c.visible), newColumn, ...columns.filter(c => !c.visible)]);
+      onAddField?.(fieldType);
+    },
+    [columns, onColumnsChange, onAddField]
+  );
+
   const visibleColumns = columns.filter((c) => c.visible);
 
   return (
@@ -422,7 +545,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
       )}
     >
       {/* Checkbox Column */}
-      <div className="flex items-center justify-center w-10 px-2 py-2.5 border-r border-gray-100">
+      <div className="flex items-center justify-center w-10 px-2 py-2.5">
         <input
           type="checkbox"
           className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
@@ -452,6 +575,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
         <AddColumnDropdown
           columns={columns}
           onToggleColumn={handleToggleColumn}
+          onAddCustomColumn={handleAddField}
         />
       </div>
     </div>

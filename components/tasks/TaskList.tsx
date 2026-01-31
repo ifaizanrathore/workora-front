@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -20,12 +20,26 @@ import {
   ListTree,
   Users,
   MoreHorizontal,
+  Settings,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types';
+import { api } from '@/lib/api';
 import { TaskListHeader, useColumns, defaultColumns, Column } from './TaskListHeader';
 import { TaskRow } from './TaskRow';
+import { StatusOption } from './CellDropdowns';
 import { SkeletonTaskList } from '@/components/ui/skeleton';
+import { useTaskStore } from '@/stores';
+
+// Local type for available users (flexible)
+interface AvailableUser {
+  id: string | number;
+  username?: string;
+  email?: string;
+  profilePicture?: string;
+  color?: string;
+}
 
 // ============================================================
 // TYPES
@@ -34,12 +48,14 @@ import { SkeletonTaskList } from '@/components/ui/skeleton';
 interface TaskListProps {
   tasks: Task[];
   isLoading?: boolean;
+  listId?: string;
+  workspaceId?: string;
   listName?: string;
   listColor?: string;
   onTaskClick?: (task: Task) => void;
   onTaskSelect?: (taskId: string, selected: boolean) => void;
   onAddTask?: () => void;
-  onStatusChange?: (taskId: string, status: string) => void;
+  onTaskUpdate?: () => void; // Callback to refresh tasks after update
   onTimerToggle?: (taskId: string) => void;
   selectedTasks?: string[];
   groupBy?: 'status' | 'priority' | 'assignee' | 'none';
@@ -72,7 +88,7 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ currentView, onViewChange }) => {
   ];
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 border-b border-transparent">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = currentView === tab.id;
@@ -81,18 +97,21 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ currentView, onViewChange }) => {
             key={tab.id}
             onClick={() => onViewChange(tab.id)}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+              'flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative',
               isActive
-                ? 'text-gray-900 border-b-2 border-purple-600'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
             )}
           >
             <Icon className="h-4 w-4" />
             {tab.label}
+            {isActive && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
+            )}
           </button>
         );
       })}
-      <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-md transition-colors">
+      <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
         <Plus className="h-4 w-4" />
         View
       </button>
@@ -107,49 +126,160 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ currentView, onViewChange }) => {
 interface TopToolbarProps {
   listName: string;
   onAddTask?: () => void;
-  onSearch?: (query: string) => void;
+  onSearchToggle: () => void;
+  showSearch: boolean;
+  onHideToggle: () => void;
+  showHidePanel: boolean;
+  currentView: string;
+  onViewChange: (view: string) => void;
 }
 
-const TopToolbar: React.FC<TopToolbarProps> = ({ listName, onAddTask, onSearch }) => {
-  const [currentView, setCurrentView] = useState('list');
-
+const TopToolbar: React.FC<TopToolbarProps> = ({
+  listName,
+  onAddTask,
+  onSearchToggle,
+  showSearch,
+  onHideToggle,
+  showHidePanel,
+  currentView,
+  onViewChange,
+}) => {
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
       {/* Left - Title & View Tabs */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-semibold text-gray-900">{listName}</h1>
-          <button className="p-1 text-gray-400 hover:text-gray-600 rounded">
+          <button className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </div>
-        <ViewTabs currentView={currentView} onViewChange={setCurrentView} />
+        <ViewTabs currentView={currentView} onViewChange={onViewChange} />
       </div>
 
       {/* Right - Actions */}
       <div className="flex items-center gap-2">
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
+        <button
+          onClick={onSearchToggle}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors',
+            showSearch
+              ? 'text-purple-600 bg-purple-50'
+              : 'text-gray-600 hover:bg-gray-100'
+          )}
+        >
           <Search className="h-4 w-4" />
           Search
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
+        <button
+          onClick={onHideToggle}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors',
+            showHidePanel
+              ? 'text-purple-600 bg-purple-50'
+              : 'text-gray-600 hover:bg-gray-100'
+          )}
+        >
           <SlidersHorizontal className="h-4 w-4" />
           Hide
         </button>
         <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
-          <SlidersHorizontal className="h-4 w-4" />
+          <Settings className="h-4 w-4" />
           Customize
         </button>
-        {onAddTask && (
+        {/* Add Task Button - Always visible */}
+        <div className="flex items-center">
           <button
-            onClick={onAddTask}
-            className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              // Try prop first, then fall back to store
+              if (onAddTask) {
+                onAddTask();
+              } else {
+                // Direct store call as fallback
+                useTaskStore.getState().openCreateModal();
+              }
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-l-lg transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Add task
           </button>
-        )}
+          <button
+            type="button"
+            className="flex items-center px-2 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-r-lg transition-colors cursor-pointer"
+            style={{ borderLeft: '1px solid rgba(255,255,255,0.2)' }}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </div>
       </div>
+    </div>
+  );
+};
+
+// ============================================================
+// COLUMNS DROPDOWN
+// ============================================================
+
+interface ColumnsDropdownProps {
+  columns: Column[];
+  onToggleColumn: (columnId: string) => void;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const ColumnsDropdown: React.FC<ColumnsDropdownProps> = ({
+  columns,
+  onToggleColumn,
+  isOpen,
+  onClose,
+}) => {
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      ref={dropdownRef}
+      className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
+    >
+      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
+        Show/Hide Columns
+      </div>
+      {columns
+        .filter((c) => !c.fixed)
+        .map((column) => (
+          <button
+            key={column.id}
+            onClick={() => onToggleColumn(column.id)}
+            className="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            <div className="flex items-center gap-2">
+              {column.icon}
+              <span>{column.label}</span>
+            </div>
+            {column.visible ? (
+              <Eye className="h-4 w-4 text-purple-500" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-gray-300" />
+            )}
+          </button>
+        ))}
     </div>
   );
 };
@@ -164,8 +294,11 @@ interface FilterRowProps {
   onSearch: (query: string) => void;
   searchQuery: string;
   filterCount?: number;
-  showClosed?: boolean;
-  onToggleClosed?: () => void;
+  showClosed: boolean;
+  onToggleClosed: () => void;
+  columns: Column[];
+  onToggleColumn: (columnId: string) => void;
+  showSearch: boolean;
 }
 
 const FilterRow: React.FC<FilterRowProps> = ({
@@ -174,10 +307,17 @@ const FilterRow: React.FC<FilterRowProps> = ({
   onSearch,
   searchQuery,
   filterCount = 0,
-  showClosed = false,
+  showClosed,
   onToggleClosed,
+  columns,
+  onToggleColumn,
+  showSearch,
 }) => {
   const [showGroupDropdown, setShowGroupDropdown] = useState(false);
+  const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const groupDropdownRef = useRef<HTMLDivElement>(null);
 
   const groupOptions = [
     { id: 'status', label: 'Status' },
@@ -188,19 +328,30 @@ const FilterRow: React.FC<FilterRowProps> = ({
 
   const currentGroup = groupOptions.find((g) => g.id === groupBy)?.label || 'Status';
 
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (groupDropdownRef.current && !groupDropdownRef.current.contains(e.target as Node)) {
+        setShowGroupDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-50/50">
       {/* Left - Group, Subtasks, Columns */}
       <div className="flex items-center gap-2">
         {/* Group Dropdown */}
-        <div className="relative">
+        <div className="relative" ref={groupDropdownRef}>
           <button
             onClick={() => setShowGroupDropdown(!showGroupDropdown)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <ListTree className="h-4 w-4 text-gray-400" />
             Group: {currentGroup}
-            <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+            <ChevronDown className={cn('h-3.5 w-3.5 text-gray-400 transition-transform', showGroupDropdown && 'rotate-180')} />
           </button>
 
           {showGroupDropdown && (
@@ -213,7 +364,7 @@ const FilterRow: React.FC<FilterRowProps> = ({
                     setShowGroupDropdown(false);
                   }}
                   className={cn(
-                    'flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-gray-50',
+                    'flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors',
                     groupBy === option.id && 'text-purple-600 bg-purple-50'
                   )}
                 >
@@ -232,17 +383,41 @@ const FilterRow: React.FC<FilterRowProps> = ({
         </button>
 
         {/* Columns Button */}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-          <Columns className="h-4 w-4 text-gray-400" />
-          Columns
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowColumnsDropdown(!showColumnsDropdown)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors',
+              showColumnsDropdown
+                ? 'text-purple-600 bg-purple-50 border-purple-200'
+                : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
+            )}
+          >
+            <Columns className="h-4 w-4 text-gray-400" />
+            Columns
+          </button>
+          <ColumnsDropdown
+            columns={columns}
+            onToggleColumn={onToggleColumn}
+            isOpen={showColumnsDropdown}
+            onClose={() => setShowColumnsDropdown(false)}
+          />
+        </div>
       </div>
 
       {/* Right - Filter, Closed, Assignee, Search */}
       <div className="flex items-center gap-2">
         {/* Filter */}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-          <Filter className="h-4 w-4 text-gray-400" />
+        <button
+          onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors',
+            filterCount > 0
+              ? 'text-purple-600 bg-purple-50 border-purple-200'
+              : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
+          )}
+        >
+          <Filter className="h-4 w-4" />
           {filterCount > 0 ? `${filterCount} Filter` : 'Filter'}
         </button>
 
@@ -261,27 +436,41 @@ const FilterRow: React.FC<FilterRowProps> = ({
         </button>
 
         {/* Assignee Filter */}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+        <button
+          onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+        >
           <Users className="h-4 w-4 text-gray-400" />
           Assignee
         </button>
 
         {/* User Avatar */}
-        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-          <span className="text-xs font-medium text-purple-600">U</span>
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-purple-200 transition-all">
+          <span className="text-xs font-medium text-white">U</span>
         </div>
 
         {/* Search Input */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => onSearch(e.target.value)}
-            className="w-48 h-9 pl-9 pr-4 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-          />
-        </div>
+        {showSearch && (
+          <div className="relative animate-in slide-in-from-right duration-200">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => onSearch(e.target.value)}
+              autoFocus
+              className="w-48 h-9 pl-9 pr-4 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => onSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -306,18 +495,18 @@ const TaskGroupHeader: React.FC<TaskGroupHeaderProps> = ({
   onAddTask,
   columns,
 }) => {
-  const totalWidth = columns.filter((c) => c.visible).reduce((sum, col) => sum + col.width, 0) + 50;
+  const totalWidth = columns.filter((c) => c.visible).reduce((sum, col) => sum + col.width, 0) + 60;
 
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+      className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group"
       onClick={onToggle}
       style={{ minWidth: totalWidth }}
     >
       {isCollapsed ? (
-        <ChevronRight className="h-4 w-4 text-gray-400" />
+        <ChevronRight className="h-4 w-4 text-gray-400 transition-transform" />
       ) : (
-        <ChevronDown className="h-4 w-4 text-gray-400" />
+        <ChevronDown className="h-4 w-4 text-gray-400 transition-transform" />
       )}
 
       <div
@@ -331,13 +520,13 @@ const TaskGroupHeader: React.FC<TaskGroupHeaderProps> = ({
         {group.tasks.length}
       </span>
 
-      {onAddTask && !isCollapsed && (
+      {onAddTask && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onAddTask();
           }}
-          className="ml-auto p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+          className="ml-auto p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors opacity-0 group-hover:opacity-100"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -353,21 +542,118 @@ const TaskGroupHeader: React.FC<TaskGroupHeaderProps> = ({
 interface AddTaskRowProps {
   columns: Column[];
   onAdd: () => void;
+  onQuickAdd?: (name: string) => Promise<void>;
+  listId?: string;
 }
 
-const AddTaskRow: React.FC<AddTaskRowProps> = ({ columns, onAdd }) => {
-  const totalWidth = columns.filter((c) => c.visible).reduce((sum, col) => sum + col.width, 0) + 50;
+const AddTaskRow: React.FC<AddTaskRowProps> = ({ columns, onAdd, onQuickAdd, listId }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [taskName, setTaskName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const totalWidth = columns.filter((c) => c.visible).reduce((sum, col) => sum + col.width, 0) + 60;
+
+  useEffect(() => {
+    if (isAdding && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isAdding]);
+
+  const handleSubmit = async () => {
+    if (!taskName.trim()) {
+      setIsAdding(false);
+      return;
+    }
+
+    if (onQuickAdd) {
+      setIsSaving(true);
+      try {
+        await onQuickAdd(taskName.trim());
+        setTaskName('');
+        // Keep input open for rapid task creation
+        inputRef.current?.focus();
+      } catch (error) {
+        console.error('Failed to create task:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      // Fallback to modal
+      onAdd();
+      setIsAdding(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    } else if (e.key === 'Escape') {
+      setTaskName('');
+      setIsAdding(false);
+    }
+  };
+
+  const handleBlur = () => {
+    if (!taskName.trim()) {
+      setIsAdding(false);
+    }
+  };
+
+  if (isAdding) {
+    return (
+      <div
+        className="flex items-center w-full bg-purple-50/50 border-b border-purple-100"
+        style={{ minWidth: totalWidth }}
+      >
+        <div className="w-10 flex items-center justify-center px-2 py-2.5">
+          {isSaving ? (
+            <Loader2 className="h-4 w-4 text-purple-500 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4 text-purple-500" />
+          )}
+        </div>
+        <div className="flex-1 py-1.5 pr-3">
+          <input
+            ref={inputRef}
+            type="text"
+            value={taskName}
+            onChange={(e) => setTaskName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            disabled={isSaving}
+            placeholder="Task name (Enter to save, Esc to cancel)"
+            className={cn(
+              'w-full px-3 py-1.5 text-sm rounded border border-purple-300 bg-white',
+              'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent',
+              'placeholder:text-gray-400',
+              isSaving && 'opacity-50'
+            )}
+          />
+        </div>
+        <button
+          onClick={() => {
+            setTaskName('');
+            setIsAdding(false);
+          }}
+          className="p-2 mr-2 text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <button
-      onClick={onAdd}
+      onClick={() => setIsAdding(true)}
       className="flex items-center w-full px-3 py-2.5 text-sm text-gray-400 hover:text-purple-600 hover:bg-purple-50/50 border-b border-gray-100 transition-colors group"
       style={{ minWidth: totalWidth }}
     >
       <div className="w-10 flex items-center justify-center">
-        <Plus className="h-4 w-4 group-hover:text-purple-600" />
+        <Plus className="h-4 w-4 group-hover:text-purple-600 transition-colors" />
       </div>
-      <span className="group-hover:text-purple-600">Add task...</span>
+      <span className="group-hover:text-purple-600 transition-colors">Add task...</span>
     </button>
   );
 };
@@ -377,14 +663,16 @@ const AddTaskRow: React.FC<AddTaskRowProps> = ({ columns, onAdd }) => {
 // ============================================================
 
 export const TaskList: React.FC<TaskListProps> = ({
-  tasks,
+  tasks: initialTasks,
   isLoading = false,
+  listId,
+  workspaceId,
   listName = 'Tasks',
   listColor = '#5B4FD1',
   onTaskClick,
   onTaskSelect,
   onAddTask,
-  onStatusChange,
+  onTaskUpdate,
   onTimerToggle,
   selectedTasks = [],
   groupBy = 'status',
@@ -392,6 +680,23 @@ export const TaskList: React.FC<TaskListProps> = ({
   className,
 }) => {
   const { columns, updateColumns } = useColumns(defaultColumns);
+  const { openTaskModal } = useTaskStore();
+
+  // LOCAL TASKS STATE for optimistic updates
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  
+  // Sync with parent tasks when they change
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
+  // Handle task click - open detail modal
+  const handleTaskClick = useCallback((task: Task) => {
+    // Use store to open modal
+    openTaskModal(task);
+    // Also call prop if provided
+    onTaskClick?.(task);
+  }, [openTaskModal, onTaskClick]);
 
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -399,6 +704,409 @@ export const TaskList: React.FC<TaskListProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [showClosed, setShowClosed] = useState(false);
   const [internalGroupBy, setInternalGroupBy] = useState(groupBy);
+  const [currentView, setCurrentView] = useState('list');
+  const [showSearch, setShowSearch] = useState(false);
+  const [showHidePanel, setShowHidePanel] = useState(false);
+
+  // Metadata for inline editing
+  const [statuses, setStatuses] = useState<StatusOption[]>([]);
+  const [members, setMembers] = useState<AvailableUser[]>([]);
+  const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set());
+  const [loadingMetadata, setLoadingMetadata] = useState(false);
+
+  // Timer state
+  const [runningTimer, setRunningTimer] = useState<{
+    taskId: string;
+    startTime: number;
+  } | null>(null);
+  const [timerElapsed, setTimerElapsed] = useState(0);
+
+  // Update timer elapsed every second when running
+  useEffect(() => {
+    if (!runningTimer) {
+      setTimerElapsed(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimerElapsed(Date.now() - runningTimer.startTime);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [runningTimer]);
+
+  // Check for running timer on mount
+  useEffect(() => {
+    const checkRunningTimer = async () => {
+      if (!workspaceId) return;
+      
+      try {
+        const timer = await api.getRunningTimer(workspaceId);
+        if (timer?.data?.task?.id) {
+          setRunningTimer({
+            taskId: timer.data.task.id,
+            startTime: parseInt(timer.data.start) || Date.now(),
+          });
+        }
+      } catch (error) {
+        // No running timer or error - that's fine
+      }
+    };
+    
+    checkRunningTimer();
+  }, [workspaceId]);
+
+  // Fetch statuses when listId changes
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      if (!listId) return;
+      
+      try {
+        const fetchedStatuses = await api.getListStatuses(listId);
+        setStatuses(fetchedStatuses);
+      } catch (error) {
+        console.error('Failed to fetch statuses:', error);
+      }
+    };
+
+    fetchStatuses();
+  }, [listId]);
+
+  // Fetch members when workspaceId changes
+  useEffect(() => {
+    if (!workspaceId) return;
+    
+    let isCancelled = false;
+    
+    const fetchMembers = async () => {
+      setLoadingMetadata(true);
+      
+      try {
+        const fetchedMembers = await api.getMembers(workspaceId);
+        
+        if (isCancelled) return;
+        
+        if (fetchedMembers && fetchedMembers.length > 0) {
+          setMembers(fetchedMembers);
+        } else {
+          setMembers([]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch members:', error);
+        if (!isCancelled) {
+          setMembers([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoadingMetadata(false);
+        }
+      }
+    };
+
+    fetchMembers();
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [workspaceId]);
+
+  // FALLBACK: If we have tasks but no members, try to get workspaceId from localStorage
+  useEffect(() => {
+    const fetchMembersFallback = async () => {
+      if (members.length > 0) return;
+      if (tasks.length === 0) return;
+      if (workspaceId) return;
+      
+      try {
+        const stored = localStorage.getItem('workora-workspace');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const storedWorkspaceId = parsed?.state?.currentWorkspace?.id;
+          
+          if (storedWorkspaceId) {
+            const fetchedMembers = await api.getMembers(storedWorkspaceId);
+            if (fetchedMembers && fetchedMembers.length > 0) {
+              setMembers(fetchedMembers);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Fallback members fetch failed:', error);
+      }
+    };
+    
+    const timer = setTimeout(fetchMembersFallback, 500);
+    return () => clearTimeout(timer);
+  }, [tasks.length, members.length, workspaceId]);
+
+  // ============================================================
+  // API UPDATE HANDLERS WITH OPTIMISTIC UPDATES
+  // ============================================================
+
+  const handleStatusChange = useCallback(async (taskId: string, status: StatusOption) => {
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+
+    // Store previous state for rollback
+    const previousTasks = [...tasks];
+
+    // OPTIMISTIC UPDATE - update local state immediately
+    setTasks(prev => prev.map(t => 
+      t.id === taskId 
+        ? { 
+            ...t, 
+            status: { 
+              ...t.status, 
+              id: String(status.id || ''),
+              status: status.status || '', 
+              color: status.color || '#gray',
+              type: status.type
+            } 
+          } 
+        : t
+    ));
+
+    try {
+      await api.updateTask(taskId, { status: status.status });
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      setTasks(previousTasks);
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks]);
+
+  const handlePriorityChange = useCallback(async (taskId: string, priority: number | null) => {
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+
+    const previousTasks = [...tasks];
+
+    // OPTIMISTIC UPDATE
+    const priorityMap: Record<number, { id: string; priority: string; color: string }> = {
+      1: { id: '1', priority: 'urgent', color: '#EF4444' },
+      2: { id: '2', priority: 'high', color: '#F97316' },
+      3: { id: '3', priority: 'normal', color: '#3B82F6' },
+      4: { id: '4', priority: 'low', color: '#6B7280' },
+    };
+    
+    setTasks(prev => prev.map(t => 
+      t.id === taskId 
+        ? { ...t, priority: priority ? priorityMap[priority] : undefined } 
+        : t
+    ));
+
+    try {
+      await api.updateTask(taskId, { priority });
+    } catch (error) {
+      console.error('Failed to update priority:', error);
+      setTasks(previousTasks);
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks]);
+
+  const handleDueDateChange = useCallback(async (taskId: string, timestamp: number | null) => {
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+
+    const previousTasks = [...tasks];
+
+    // OPTIMISTIC UPDATE
+    setTasks(prev => prev.map(t => 
+      t.id === taskId 
+        ? { ...t, due_date: timestamp ? String(timestamp) : undefined } 
+        : t
+    ));
+
+    try {
+      await api.updateTask(taskId, { due_date: timestamp });
+    } catch (error) {
+      console.error('Failed to update due date:', error);
+      setTasks(previousTasks);
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks]);
+
+  const handleAssigneesChange = useCallback(async (taskId: string, action: { add?: number[]; rem?: number[] }) => {
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+
+    const previousTasks = [...tasks];
+
+    // OPTIMISTIC UPDATE
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t;
+      
+      let newAssignees = [...(t.assignees || [])];
+      
+      if (action.add) {
+        action.add.forEach(userId => {
+          const user = members.find(m => Number(m.id) === userId);
+          if (user && !newAssignees.some(a => Number(a.id) === userId)) {
+            newAssignees.push({
+              id: userId,
+              username: user.username || '',
+              email: user.email || '',
+              profilePicture: user.profilePicture,
+            });
+          }
+        });
+      }
+      
+      if (action.rem) {
+        newAssignees = newAssignees.filter(a => !action.rem?.includes(Number(a.id)));
+      }
+      
+      return { ...t, assignees: newAssignees };
+    }));
+
+    try {
+      await api.updateAssignees(taskId, action);
+    } catch (error) {
+      console.error('Failed to update assignees:', error);
+      setTasks(previousTasks);
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks, members]);
+
+  // Handle task name change
+  const handleNameChange = useCallback(async (taskId: string, name: string) => {
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+    const previousTasks = [...tasks];
+
+    // OPTIMISTIC UPDATE
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, name } : t
+    ));
+
+    try {
+      await api.updateTask(taskId, { name });
+    } catch (error) {
+      console.error('Failed to update task name:', error);
+      setTasks(previousTasks);
+      throw error; // Re-throw so the UI knows it failed
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks]);
+
+  // Handle quick add task
+  const handleQuickAdd = useCallback(async (name: string) => {
+    if (!listId) {
+      console.error('Cannot create task without listId');
+      return;
+    }
+
+    try {
+      const newTask = await api.createTask({ listId, name });
+      
+      // Add to local state
+      setTasks(prev => [...prev, newTask]);
+      
+      // Optionally refresh from server to get full task data
+      onTaskUpdate?.();
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      throw error;
+    }
+  }, [listId, onTaskUpdate]);
+
+  // Get workspaceId from storage if not provided
+  const getWorkspaceId = useCallback(() => {
+    if (workspaceId) return workspaceId;
+    
+    try {
+      const stored = localStorage.getItem('workora-workspace');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed?.state?.currentWorkspace?.id;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }, [workspaceId]);
+
+  // Handle timer start
+  const handleTimerStart = useCallback(async (taskId: string) => {
+    const wsId = getWorkspaceId();
+    if (!wsId) {
+      console.error('Cannot start timer without workspaceId');
+      return;
+    }
+
+    try {
+      // Stop any running timer first
+      if (runningTimer) {
+        await api.stopTimer(wsId);
+      }
+      
+      // Start new timer
+      const result = await api.startTimer(wsId, taskId);
+      
+      setRunningTimer({
+        taskId,
+        startTime: parseInt(result.start) || Date.now(),
+      });
+      setTimerElapsed(0);
+    } catch (error) {
+      console.error('Failed to start timer:', error);
+      throw error;
+    }
+  }, [getWorkspaceId, runningTimer]);
+
+  // Handle timer stop
+  const handleTimerStop = useCallback(async (taskId: string) => {
+    const wsId = getWorkspaceId();
+    if (!wsId) {
+      console.error('Cannot stop timer without workspaceId');
+      return;
+    }
+
+    try {
+      await api.stopTimer(wsId);
+      
+      // Update local task with new time spent
+      const elapsed = timerElapsed;
+      setTasks(prev => prev.map(t => 
+        t.id === taskId 
+          ? { ...t, time_spent: (t.time_spent || 0) + elapsed }
+          : t
+      ));
+      
+      setRunningTimer(null);
+      setTimerElapsed(0);
+      
+      // Refresh to get updated time data
+      onTaskUpdate?.();
+    } catch (error) {
+      console.error('Failed to stop timer:', error);
+      throw error;
+    }
+  }, [getWorkspaceId, timerElapsed, onTaskUpdate]);
+
+  // ============================================================
+  // LOCAL STATE HANDLERS
+  // ============================================================
 
   const handleSort = useCallback((columnId: string, direction: 'asc' | 'desc') => {
     setSortBy(columnId);
@@ -423,6 +1131,16 @@ export const TaskList: React.FC<TaskListProps> = ({
       onGroupByChange?.(newGroupBy);
     },
     [onGroupByChange]
+  );
+
+  const handleToggleColumn = useCallback(
+    (columnId: string) => {
+      const newColumns = columns.map((col) =>
+        col.id === columnId ? { ...col, visible: !col.visible } : col
+      );
+      updateColumns(newColumns);
+    },
+    [columns, updateColumns]
   );
 
   const filteredTasks = useMemo(() => {
@@ -536,14 +1254,41 @@ export const TaskList: React.FC<TaskListProps> = ({
     return Array.from(groups.values());
   }, [sortedTasks, internalGroupBy, listName, listColor]);
 
+  // Calculate filter count
+  const filterCount = useMemo(() => {
+    let count = 0;
+    if (searchQuery) count++;
+    if (showClosed) count++;
+    return count;
+  }, [searchQuery, showClosed]);
+
   if (isLoading) {
     return <SkeletonTaskList rows={8} />;
   }
 
+  // Show loading indicator while fetching metadata
+  const isMetadataReady = !loadingMetadata || (statuses.length > 0 && members.length > 0);
+
   return (
     <div className={cn('flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden', className)}>
+      {/* Metadata loading indicator */}
+      {loadingMetadata && (
+        <div className="flex items-center justify-center gap-2 py-2 bg-purple-50 border-b border-purple-100">
+          <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+          <span className="text-sm text-purple-600">Loading statuses and members...</span>
+        </div>
+      )}
       {/* Top Toolbar - Title, View Tabs, Actions */}
-      <TopToolbar listName={listName} onAddTask={onAddTask} />
+      <TopToolbar
+        listName={listName}
+        onAddTask={onAddTask}
+        onSearchToggle={() => setShowSearch(!showSearch)}
+        showSearch={showSearch}
+        onHideToggle={() => setShowHidePanel(!showHidePanel)}
+        showHidePanel={showHidePanel}
+        currentView={currentView}
+        onViewChange={setCurrentView}
+      />
 
       {/* Filter Row - Group, Subtasks, Columns | Filter, Closed, Search */}
       <FilterRow
@@ -551,8 +1296,12 @@ export const TaskList: React.FC<TaskListProps> = ({
         onGroupByChange={handleGroupByChange}
         onSearch={setSearchQuery}
         searchQuery={searchQuery}
+        filterCount={filterCount}
         showClosed={showClosed}
         onToggleClosed={() => setShowClosed(!showClosed)}
+        columns={columns}
+        onToggleColumn={handleToggleColumn}
+        showSearch={showSearch}
       />
 
       {/* Scrollable Container */}
@@ -590,14 +1339,29 @@ export const TaskList: React.FC<TaskListProps> = ({
                     columns={columns}
                     isSelected={selectedTasks.includes(task.id)}
                     onSelect={onTaskSelect}
-                    onClick={onTaskClick}
-                    onStatusChange={onStatusChange}
-                    onTimerToggle={onTimerToggle}
+                    onClick={handleTaskClick}
+                    onNameChange={handleNameChange}
+                    onStatusChange={handleStatusChange}
+                    onPriorityChange={handlePriorityChange}
+                    onDueDateChange={handleDueDateChange}
+                    onAssigneesChange={handleAssigneesChange}
+                    onTimerStart={handleTimerStart}
+                    onTimerStop={handleTimerStop}
+                    isTimerRunning={runningTimer?.taskId === task.id}
+                    timerElapsed={runningTimer?.taskId === task.id ? timerElapsed : 0}
+                    availableStatuses={statuses}
+                    availableUsers={members}
+                    isUpdating={updatingTasks.has(task.id)}
                   />
                 ))}
 
-                {/* Add Task Row */}
-                {onAddTask && <AddTaskRow columns={columns} onAdd={onAddTask} />}
+                {/* Add Task Row - Quick inline add */}
+                <AddTaskRow 
+                  columns={columns} 
+                  onAdd={onAddTask || (() => {})} 
+                  onQuickAdd={listId ? handleQuickAdd : undefined}
+                  listId={listId}
+                />
               </>
             )}
           </div>
@@ -616,9 +1380,10 @@ export const TaskList: React.FC<TaskListProps> = ({
             {onAddTask && (
               <button
                 onClick={onAddTask}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
               >
-                + Create Task
+                <Plus className="h-4 w-4" />
+                Create Task
               </button>
             )}
           </div>
