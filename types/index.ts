@@ -151,6 +151,7 @@ export interface Tag {
   tag_fg?: string;
   tag_bg?: string;
   creator?: number;
+   color?: string; 
 }
 
 // Custom field types

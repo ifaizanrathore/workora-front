@@ -48,7 +48,7 @@
     @apply bg-background text-foreground antialiased;
   }
 
-  /* Custom scrollbar */
+  /* Default scrollbar (thin, subtle) */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -100,7 +100,9 @@
 }
 
 @layer components {
-  /* Button styles */
+  /* ============================================================
+     BUTTON STYLES
+     ============================================================ */
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed;
   }
@@ -121,17 +123,23 @@
     @apply btn bg-destructive text-white hover:bg-red-600;
   }
 
-  /* Card styles */
+  /* ============================================================
+     CARD STYLES
+     ============================================================ */
   .card {
     @apply bg-card rounded-lg border border-border shadow-sm;
   }
 
-  /* Input styles */
+  /* ============================================================
+     INPUT STYLES
+     ============================================================ */
   .input {
     @apply w-full px-3 py-2 rounded-md border border-border bg-white text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors;
   }
 
-  /* Badge styles */
+  /* ============================================================
+     BADGE STYLES
+     ============================================================ */
   .badge {
     @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
   }
@@ -152,12 +160,16 @@
     @apply badge bg-green-100 text-green-700;
   }
 
-  /* Tag styles */
+  /* ============================================================
+     TAG STYLES
+     ============================================================ */
   .tag {
     @apply inline-flex items-center px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs font-medium;
   }
 
-  /* Status dot */
+  /* ============================================================
+     STATUS DOT STYLES
+     ============================================================ */
   .status-dot {
     @apply w-2 h-2 rounded-full;
   }
@@ -174,7 +186,9 @@
     @apply status-dot bg-green-500;
   }
 
-  /* Timer badge */
+  /* ============================================================
+     TIMER BADGE STYLES
+     ============================================================ */
   .timer-badge {
     @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium;
   }
@@ -187,7 +201,9 @@
     @apply timer-badge bg-amber-50 text-amber-700;
   }
 
-  /* Sidebar item */
+  /* ============================================================
+     SIDEBAR STYLES
+     ============================================================ */
   .sidebar-item {
     @apply flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-gray-100 hover:text-foreground transition-colors cursor-pointer;
   }
@@ -196,12 +212,16 @@
     @apply sidebar-item bg-primary text-white hover:bg-primary/90 hover:text-white;
   }
 
-  /* Panel header */
+  /* ============================================================
+     PANEL STYLES
+     ============================================================ */
   .panel-header {
     @apply flex items-center justify-between px-4 py-3 border-b border-border;
   }
 
-  /* Tooltip */
+  /* ============================================================
+     TOOLTIP STYLES
+     ============================================================ */
   .tooltip {
     @apply absolute z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 rounded shadow-lg whitespace-nowrap;
   }
@@ -209,7 +229,6 @@
   /* ============================================================
      SKELETON COMPONENT CLASSES
      ============================================================ */
-  
   .skeleton {
     @apply bg-gray-200 dark:bg-gray-700 rounded;
     background-color: var(--skeleton-base);
@@ -238,10 +257,169 @@
   .skeleton-input {
     @apply skeleton h-10 w-full rounded-lg;
   }
+
+  /* ============================================================
+     TASK LIST COMPONENTS
+     ============================================================ */
+  
+  /* Task row base */
+  .task-row {
+    @apply flex items-center border-b border-gray-100 bg-white transition-all;
+  }
+
+  .task-row:hover {
+    @apply bg-gray-50/50;
+  }
+
+  .task-row.dragging {
+    @apply opacity-50 bg-purple-50;
+  }
+
+  .task-row.selected {
+    @apply bg-purple-50/50;
+  }
+
+  /* Inline edit input */
+  .inline-edit-input {
+    @apply w-full px-2 py-1 text-sm border border-purple-400 rounded outline-none bg-white;
+  }
+
+  .inline-edit-input:focus {
+    @apply ring-2 ring-purple-200;
+  }
+
+  /* Dropdown menu */
+  .dropdown-menu {
+    @apply absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1;
+    animation: dropdownIn 0.15s ease-out;
+  }
+
+  .dropdown-item {
+    @apply w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-2;
+  }
+
+  .dropdown-item-danger {
+    @apply dropdown-item hover:bg-red-50 text-red-600;
+  }
 }
 
 @layer utilities {
-  /* Text truncation */
+  /* ============================================================
+     SCROLLBAR UTILITIES
+     ============================================================ */
+  
+  /* Hide scrollbar completely */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Thin scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+  }
+
+  /* Hide scrollbar (legacy class name) */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* ============================================================
+     DRAG AND DROP UTILITIES
+     ============================================================ */
+  
+  /* Draggable element cursor */
+  [draggable="true"] {
+    cursor: grab;
+  }
+
+  [draggable="true"]:active {
+    cursor: grabbing;
+  }
+
+  /* Drag ghost improvements */
+  .dragging {
+    opacity: 0.5;
+    transform: scale(1.02);
+  }
+
+  /* Drop indicator lines */
+  .drop-above {
+    @apply border-t-2 border-t-purple-500;
+  }
+
+  .drop-below {
+    @apply border-b-2 border-b-purple-500;
+  }
+
+  /* ============================================================
+     COLUMN RESIZE UTILITIES
+     ============================================================ */
+  
+  .resize-handle {
+    @apply absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-20;
+  }
+
+  .resize-handle:hover {
+    @apply bg-purple-400;
+  }
+
+  /* While resizing, prevent text selection */
+  .resizing,
+  .resizing * {
+    user-select: none !important;
+    cursor: col-resize !important;
+  }
+
+  /* ============================================================
+     INLINE EDIT UTILITIES
+     ============================================================ */
+  
+  /* Editable cell hover indicator */
+  .editable-cell {
+    @apply relative cursor-pointer;
+  }
+
+  .editable-cell::after {
+    content: '';
+    @apply absolute inset-0 border border-dashed border-transparent rounded pointer-events-none transition-colors;
+  }
+
+  .editable-cell:hover::after {
+    @apply border-gray-300;
+  }
+
+  /* ============================================================
+     TEXT TRUNCATION
+     ============================================================ */
   .truncate-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -256,7 +434,9 @@
     overflow: hidden;
   }
 
-  /* Flex utilities */
+  /* ============================================================
+     FLEX UTILITIES
+     ============================================================ */
   .flex-center {
     @apply flex items-center justify-center;
   }
@@ -265,21 +445,11 @@
     @apply flex items-center justify-between;
   }
 
-  /* Hide scrollbar */
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-
   /* ============================================================
      ANIMATIONS
      ============================================================ */
 
-  /* Fade In (existing) */
+  /* Fade In */
   .animate-in {
     animation: fadeIn 0.2s ease-out;
   }
@@ -334,6 +504,34 @@
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+
+  /* Dropdown In */
+  @keyframes dropdownIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Row Inserted (for drag-drop reorder) */
+  .row-inserted {
+    animation: rowInserted 0.2s ease-out;
+  }
+
+  @keyframes rowInserted {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 
@@ -402,7 +600,9 @@
   .stagger-9 { animation-delay: 400ms; }
   .stagger-10 { animation-delay: 450ms; }
 
-  /* Focus ring */
+  /* ============================================================
+     FOCUS UTILITIES
+     ============================================================ */
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-primary/20;
   }

@@ -111,6 +111,7 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
 
   const statusColor = currentStatus?.color || '#9CA3AF';
   const statusId = String(currentStatus?.id || '');
+  const statusText = currentStatus?.status || 'No status';
 
   return (
     <DropdownWrapper
@@ -136,48 +137,52 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({
             className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ backgroundColor: statusColor }}
           />
-          <span className="truncate">{currentStatus?.status || 'No status'}</span>
+          <span className="truncate">{statusText}</span>
         </button>
       }
     >
       <div className="max-h-64 overflow-y-auto py-1 min-w-[160px]">
-        {statuses.map((status) => {
-          const isSelected = statusId === String(status.id);
-          return (
-            <button
-              key={String(status.id || status.status)}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(status);
-                setIsOpen(false);
-              }}
-              className={cn(
-                'flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-gray-50 transition-colors',
-                isSelected && 'bg-purple-50'
-              )}
-            >
-              {/* Status Badge - Uniform Style */}
-              <div
-                className="inline-flex items-center gap-1.5 min-w-[100px] px-2.5 py-1 rounded text-xs font-medium border"
-                style={{
-                  borderColor: status.color || '#9CA3AF',
-                  color: status.color || '#9CA3AF',
+        {statuses.length === 0 ? (
+          <div className="px-3 py-2 text-sm text-gray-500 text-center">No statuses available</div>
+        ) : (
+          statuses.map((status) => {
+            const isSelected = statusId === String(status.id);
+            return (
+              <button
+                key={String(status.id || status.status)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(status);
+                  setIsOpen(false);
                 }}
+                className={cn(
+                  'flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-gray-50 transition-colors',
+                  isSelected && 'bg-purple-50'
+                )}
               >
+                {/* Status Badge - Uniform Style */}
                 <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: status.color || '#9CA3AF' }}
-                />
-                <span className="truncate">{status.status}</span>
-              </div>
-              
-              {/* Checkmark */}
-              {isSelected && (
-                <Check className="h-4 w-4 text-purple-600 ml-auto" />
-              )}
-            </button>
-          );
-        })}
+                  className="inline-flex items-center gap-1.5 min-w-[100px] px-2.5 py-1 rounded text-xs font-medium border"
+                  style={{
+                    borderColor: status.color || '#9CA3AF',
+                    color: status.color || '#9CA3AF',
+                  }}
+                >
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: status.color || '#9CA3AF' }}
+                  />
+                  <span className="truncate">{status.status}</span>
+                </div>
+                
+                {/* Checkmark */}
+                {isSelected && (
+                  <Check className="h-4 w-4 text-purple-600 ml-auto" />
+                )}
+              </button>
+            );
+          })
+        )}
       </div>
     </DropdownWrapper>
   );
@@ -477,7 +482,7 @@ export const DatePickerDropdown: React.FC<DatePickerDropdownProps> = ({
 };
 
 // ============================================================
-// ASSIGNEE DROPDOWN
+// ASSIGNEE DROPDOWN - FIXED to show all assignees properly
 // ============================================================
 
 interface AssigneeDropdownProps {
@@ -507,6 +512,14 @@ export const AssigneeDropdown: React.FC<AssigneeDropdownProps> = ({
 
   const isAssigned = (userId: string | number) => currentAssignees.some((a) => String(a.id) === String(userId));
 
+  // Get avatar color based on name
+  const getAvatarColor = (name: string | undefined): string => {
+    const colors = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#6366F1', '#14B8A6'];
+    if (!name) return colors[0];
+    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   return (
     <DropdownWrapper
       isOpen={isOpen}
@@ -529,10 +542,11 @@ export const AssigneeDropdown: React.FC<AssigneeDropdownProps> = ({
         >
           {currentAssignees.length > 0 ? (
             <div className="flex -space-x-1.5">
-              {currentAssignees.slice(0, 3).map((assignee, i) => (
+              {currentAssignees.slice(0, 4).map((assignee, i) => (
                 <div
                   key={String(assignee.id) || i}
-                  className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white flex items-center justify-center"
+                  className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center"
+                  style={{ backgroundColor: getAvatarColor(assignee.username || assignee.email) }}
                   title={assignee.username || assignee.email}
                 >
                   {assignee.profilePicture ? (
@@ -548,9 +562,9 @@ export const AssigneeDropdown: React.FC<AssigneeDropdownProps> = ({
                   )}
                 </div>
               ))}
-              {currentAssignees.length > 3 && (
+              {currentAssignees.length > 4 && (
                 <div className="w-7 h-7 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center">
-                  <span className="text-xs font-medium text-gray-500">+{currentAssignees.length - 3}</span>
+                  <span className="text-xs font-medium text-gray-500">+{currentAssignees.length - 4}</span>
                 </div>
               )}
             </div>
@@ -581,14 +595,17 @@ export const AssigneeDropdown: React.FC<AssigneeDropdownProps> = ({
         {/* Current Assignees */}
         {currentAssignees.length > 0 && (
           <div className="p-2 border-b border-gray-100">
-            <div className="text-xs font-medium text-gray-500 mb-1">Assigned</div>
+            <div className="text-xs font-medium text-gray-500 mb-1">Assigned ({currentAssignees.length})</div>
             {currentAssignees.map((assignee) => (
               <div
                 key={String(assignee.id)}
                 className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-gray-50"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: getAvatarColor(assignee.username || assignee.email) }}
+                  >
                     {assignee.profilePicture ? (
                       <img src={assignee.profilePicture} alt="" className="w-full h-full rounded-full object-cover" />
                     ) : (
@@ -597,7 +614,7 @@ export const AssigneeDropdown: React.FC<AssigneeDropdownProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="text-sm text-gray-700">{assignee.username || assignee.email}</span>
+                  <span className="text-sm text-gray-700 truncate max-w-[140px]">{assignee.username || assignee.email}</span>
                 </div>
                 <button
                   onClick={(e) => {
@@ -633,7 +650,10 @@ export const AssigneeDropdown: React.FC<AssigneeDropdownProps> = ({
                     assigned ? 'bg-purple-50' : 'hover:bg-gray-50'
                   )}
                 >
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  <div 
+                    className="w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: getAvatarColor(user.username || user.email) }}
+                  >
                     {user.profilePicture ? (
                       <img src={user.profilePicture} alt="" className="w-full h-full rounded-full object-cover" />
                     ) : (
@@ -642,7 +662,7 @@ export const AssigneeDropdown: React.FC<AssigneeDropdownProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="flex-1 text-sm text-gray-700">{user.username || user.email}</span>
+                  <span className="flex-1 text-sm text-gray-700 truncate">{user.username || user.email}</span>
                   {assigned && <Check className="h-4 w-4 text-purple-600" />}
                 </button>
               );
@@ -775,7 +795,7 @@ export const AddFieldDropdown: React.FC<AddFieldDropdownProps> = ({
 };
 
 // ============================================================
-// ETA / TIMER DISPLAY - ClickUp Style
+// ETA / TIMER DISPLAY - FIXED: Circle instead of Square
 // ============================================================
 
 interface ETADisplayProps {
@@ -853,13 +873,14 @@ export const ETADisplay: React.FC<ETADisplayProps> = ({
     return `${minutes}m`;
   };
 
-  // If we have ETA countdown, show that with square indicator
+  // If we have ETA countdown, show that with CIRCLE indicator (FIXED from square)
   if (eta && countdown) {
     return (
       <div className="flex items-center gap-2">
+        {/* FIXED: Changed from rounded-sm to rounded-full for circle */}
         <div
           className={cn(
-            'w-2.5 h-2.5 rounded-sm flex-shrink-0',
+            'w-2.5 h-2.5 rounded-full flex-shrink-0',
             isOverdue ? 'bg-red-500' : 'bg-green-500'
           )}
         />
@@ -888,7 +909,7 @@ export const ETADisplay: React.FC<ETADisplayProps> = ({
       )}
     >
       <Clock className="h-3.5 w-3.5" />
-      <span>{formatTimeSpent(timeSpent)}</span>
+      <span>{formatTimeSpent(timeSpent)}parseInt(selectedTask.time_spent)</span>
     </button>
   );
 };

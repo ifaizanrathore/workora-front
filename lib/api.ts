@@ -1120,7 +1120,7 @@ class ApiClient {
     if (options?.types) params.set('types', options.types.join(','));
 
     const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request<any>(`/tasks/${taskId}/activities${query}`);
+    return this.request<any>(`/tasks/${taskId}/activities${ query}`);
   }
 
   async getRecentActivities(options?: { limit?: number; teamId?: string }) {

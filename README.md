@@ -167,7 +167,7 @@ ngrok-skip-browser-warning: true
 - **react-hot-toast** - Notifications
 - **socket.io-client** - Real-time updates
 
-## 🏗️ Features
+##  Features
 
 ### Task Management
 - ✅ Task list with status grouping
@@ -238,5 +238,3 @@ All API calls use React Query with:
 - WebSocket support is prepared for real-time updates
 
 ---
-
-Built with ❤️ for Workora

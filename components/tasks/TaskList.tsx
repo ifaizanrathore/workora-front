@@ -202,17 +202,10 @@ const TopToolbar: React.FC<TopToolbarProps> = ({
                 useTaskStore.getState().openCreateModal();
               }
             }}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-l-lg transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Add task
-          </button>
-          <button
-            type="button"
-            className="flex items-center px-2 py-2 text-white bg-purple-600 hover:bg-purple-700 rounded-r-lg transition-colors cursor-pointer"
-            style={{ borderLeft: '1px solid rgba(255,255,255,0.2)' }}
-          >
-            <ChevronDown className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -884,12 +877,12 @@ export const TaskList: React.FC<TaskListProps> = ({
 
     const previousTasks = [...tasks];
 
-    // OPTIMISTIC UPDATE
+    // OPTIMISTIC UPDATE - using ClickUp colors
     const priorityMap: Record<number, { id: string; priority: string; color: string }> = {
-      1: { id: '1', priority: 'urgent', color: '#EF4444' },
-      2: { id: '2', priority: 'high', color: '#F97316' },
-      3: { id: '3', priority: 'normal', color: '#3B82F6' },
-      4: { id: '4', priority: 'low', color: '#6B7280' },
+      1: { id: '1', priority: 'urgent', color: '#F42A2A' },
+      2: { id: '2', priority: 'high', color: '#FFCC00' },
+      3: { id: '3', priority: 'normal', color: '#6B7AFF' },
+      4: { id: '4', priority: 'low', color: '#808080' },
     };
     
     setTasks(prev => prev.map(t => 
@@ -1105,6 +1098,129 @@ export const TaskList: React.FC<TaskListProps> = ({
   }, [getWorkspaceId, timerElapsed, onTaskUpdate]);
 
   // ============================================================
+  // NEW HANDLERS: Complete, Delete, Duplicate, Archive
+  // ============================================================
+
+  // Handle task completion (toggle complete/reopen)
+  const handleComplete = useCallback(async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const isCompleted = ['closed', 'complete', 'done', 'completed'].includes(
+      task.status?.status?.toLowerCase() || ''
+    );
+
+    // Find the appropriate status to switch to
+    const newStatus = isCompleted
+      ? statuses.find(s => 
+          s.status?.toLowerCase() === 'to do' || 
+          s.status?.toLowerCase() === 'open' || 
+          s.type === 'open'
+        )
+      : statuses.find(s => 
+          s.status?.toLowerCase() === 'complete' || 
+          s.status?.toLowerCase() === 'done' ||
+          s.status?.toLowerCase() === 'closed' ||
+          s.type === 'closed'
+        );
+
+    if (newStatus) {
+      await handleStatusChange(taskId, newStatus);
+    } else {
+      console.warn('Could not find appropriate status to toggle completion');
+    }
+  }, [tasks, statuses, handleStatusChange]);
+
+  // Handle task deletion
+  const handleDelete = useCallback(async (taskId: string) => {
+    // Show confirmation dialog
+    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+      return;
+    }
+
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+    const previousTasks = [...tasks];
+
+    // OPTIMISTIC UPDATE - remove from local state immediately
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+
+    try {
+      await api.deleteTask(taskId);
+      onTaskUpdate?.();
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      // Rollback on error
+      setTasks(previousTasks);
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks, onTaskUpdate]);
+
+  // Handle task duplication
+  const handleDuplicate = useCallback(async (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !listId) {
+      console.error('Cannot duplicate task without task data or listId');
+      return;
+    }
+
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+
+    try {
+      // Create a new task with copied data
+      const newTask = await api.createTask({
+  listId,
+  name: `${task.name} (copy)`,
+  description: task.description,
+  priority: task.priority?.id ? Number(task.priority.id) : undefined,
+  dueDate: task.due_date ? String(task.due_date) : undefined,
+});
+
+      // Add to local state
+      setTasks(prev => [...prev, newTask]);
+      
+      // Refresh to get complete task data
+      onTaskUpdate?.();
+    } catch (error) {
+      console.error('Failed to duplicate task:', error);
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks, listId, onTaskUpdate]);
+
+  // Handle task archive
+  const handleArchive = useCallback(async (taskId: string) => {
+    setUpdatingTasks(prev => new Set(prev).add(taskId));
+    const previousTasks = [...tasks];
+
+    // OPTIMISTIC UPDATE - remove from view (archived tasks typically hidden)
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+
+    try {
+      await api.updateTask(taskId, { archived: true });
+      onTaskUpdate?.();
+    } catch (error) {
+      console.error('Failed to archive task:', error);
+      // Rollback on error
+      setTasks(previousTasks);
+    } finally {
+      setUpdatingTasks(prev => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }
+  }, [tasks, onTaskUpdate]);
+
+  // ============================================================
   // LOCAL STATE HANDLERS
   // ============================================================
 
@@ -1160,7 +1276,7 @@ export const TaskList: React.FC<TaskListProps> = ({
     if (!showClosed) {
       result = result.filter((task) => {
         const status = task.status?.status?.toLowerCase() || '';
-        return !['closed', 'complete', 'done'].includes(status);
+        return !['closed', 'complete', 'done', 'completed'].includes(status);
       });
     }
 
@@ -1220,11 +1336,12 @@ export const TaskList: React.FC<TaskListProps> = ({
         case 'priority':
           groupId = String(task.priority?.id || 'no-priority');
           groupName = task.priority?.priority || 'No Priority';
+          // ClickUp priority colors
           const priorityColors: Record<string, string> = {
-            '1': '#EF4444',
-            '2': '#F97316',
-            '3': '#3B82F6',
-            '4': '#6B7280',
+            '1': '#F42A2A',
+            '2': '#FFCC00',
+            '3': '#6B7AFF',
+            '4': '#808080',
           };
           groupColor = priorityColors[String(task.priority?.id || '4')];
           break;
@@ -1305,7 +1422,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       />
 
       {/* Scrollable Container */}
-      <div className="overflow-x-auto flex-1">
+      <div className="overflow-auto flex-1" style={{ maxHeight: 'calc(100vh - 280px)' }}>
         {/* Column Headers */}
         <TaskListHeader
           columns={columns}
@@ -1352,6 +1469,11 @@ export const TaskList: React.FC<TaskListProps> = ({
                     availableStatuses={statuses}
                     availableUsers={members}
                     isUpdating={updatingTasks.has(task.id)}
+                    // NEW HANDLERS
+                    onComplete={handleComplete}
+                    onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
+                    onArchive={handleArchive}
                   />
                 ))}
 

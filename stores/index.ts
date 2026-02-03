@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { User, Workspace, Space, Folder, List, Task, PanelType } from '@/types';
 
 // Auth Store - no persist to avoid hydration loops
-interface AuthState {
+interface AuthState { 
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;

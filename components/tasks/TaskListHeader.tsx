@@ -1,27 +1,19 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Plus,
-  GripVertical,
-  ChevronDown,
-  Eye,
-  EyeOff,
+  Type,
   Calendar,
-  User,
+  Users,
   Hash,
   Timer,
   Flag,
-  CircleDot,
-  Type,
-  X,
-  Search,
-  AlignLeft,
-  CheckSquare,
-  Tag,
-  UserCheck,
-  Link2,
-  Repeat,
+  Circle,
+  Target,
+  ChevronDown,
+  Eye,
+  EyeOff,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,47 +24,24 @@ import { cn } from '@/lib/utils';
 export interface Column {
   id: string;
   label: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   width: number;
   minWidth: number;
+  maxWidth?: number;
   visible: boolean;
-  fixed?: boolean; // Name column is fixed
+  resizable?: boolean;
   sortable?: boolean;
+  fixed?: boolean; // If true, column cannot be hidden or reordered
 }
 
 export interface TaskListHeaderProps {
   columns: Column[];
   onColumnsChange: (columns: Column[]) => void;
   onSort?: (columnId: string, direction: 'asc' | 'desc') => void;
-  sortBy?: string;
+  sortColumn?: string;
+  sortBy?: string; // Alias for sortColumn (for compatibility)
   sortDirection?: 'asc' | 'desc';
-  onAddField?: (fieldType: FieldType) => void;
-  className?: string;
 }
-
-// Field types for Add Field dropdown
-export interface FieldType {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  description?: string;
-}
-
-export const AVAILABLE_FIELD_TYPES: FieldType[] = [
-  { id: 'dropdown', label: 'Dropdown', icon: <ChevronDown className="h-4 w-4" />, description: 'Single select from options' },
-  { id: 'text', label: 'Text', icon: <Type className="h-4 w-4" />, description: 'Short text input' },
-  { id: 'date', label: 'Date', icon: <Calendar className="h-4 w-4" />, description: 'Date picker' },
-  { id: 'textarea', label: 'Text area (Long Text)', icon: <AlignLeft className="h-4 w-4" />, description: 'Multi-line text' },
-  { id: 'number', label: 'Number', icon: <Hash className="h-4 w-4" />, description: 'Numeric value' },
-  { id: 'labels', label: 'Labels', icon: <Tag className="h-4 w-4" />, description: 'Multiple labels/tags' },
-  { id: 'checkbox', label: 'Checkbox', icon: <CheckSquare className="h-4 w-4" />, description: 'Yes/No toggle' },
-  { id: 'assignee', label: 'Assignee', icon: <User className="h-4 w-4" />, description: 'Assign team members' },
-  { id: 'watcher', label: 'Watcher', icon: <Eye className="h-4 w-4" />, description: 'People watching this task' },
-  { id: 'responsible', label: 'Responsible', icon: <UserCheck className="h-4 w-4" />, description: 'Primary responsible person' },
-  { id: 'dependency', label: 'Dependency Task', icon: <Link2 className="h-4 w-4" />, description: 'Link dependent tasks' },
-  { id: 'recurring', label: 'Recurring task', icon: <Repeat className="h-4 w-4" />, description: 'Set repeat schedule' },
-  { id: 'dueDate', label: 'Due date', icon: <Calendar className="h-4 w-4" />, description: 'Task deadline' },
-];
 
 // ============================================================
 // DEFAULT COLUMNS
@@ -83,350 +52,316 @@ export const defaultColumns: Column[] = [
     id: 'name',
     label: 'Name',
     icon: <Type className="h-4 w-4" />,
-    width: 400,
+    width: 350,
     minWidth: 200,
+    maxWidth: 600,
     visible: true,
-    fixed: true,
+    resizable: true,
     sortable: true,
+    fixed: true, // Name column cannot be hidden
   },
   {
     id: 'dueDate',
     label: 'Due date',
     icon: <Calendar className="h-4 w-4" />,
-    width: 140,
+    width: 130,
     minWidth: 100,
+    maxWidth: 200,
     visible: true,
+    resizable: true,
     sortable: true,
+    fixed: false,
   },
   {
     id: 'assignee',
     label: 'Assignee',
-    icon: <User className="h-4 w-4" />,
+    icon: <Users className="h-4 w-4" />,
     width: 120,
     minWidth: 80,
+    maxWidth: 200,
     visible: true,
-    sortable: true,
+    resizable: true,
+    fixed: false,
   },
   {
     id: 'tags',
     label: 'Tags',
     icon: <Hash className="h-4 w-4" />,
-    width: 120,
-    minWidth: 80,
+    width: 180,
+    minWidth: 100,
+    maxWidth: 300,
     visible: true,
-    sortable: false,
+    resizable: true,
+    fixed: false,
+  },
+  {
+    id: 'eta',
+    label: 'ETA',
+    icon: <Timer className="h-4 w-4" />,
+    width: 150,
+    minWidth: 120,
+    maxWidth: 200,
+    visible: true,
+    resizable: true,
+    sortable: true,
+    fixed: false,
   },
   {
     id: 'timer',
     label: 'Timer',
-    icon: <Timer className="h-4 w-4" />,
-    width: 140,
+    icon: <Target className="h-4 w-4" />,
+    width: 120,
     minWidth: 100,
+    maxWidth: 180,
     visible: true,
-    sortable: true,
+    resizable: true,
+    fixed: false,
   },
   {
     id: 'priority',
     label: 'Priority',
     icon: <Flag className="h-4 w-4" />,
-    width: 120,
-    minWidth: 80,
+    width: 110,
+    minWidth: 90,
+    maxWidth: 150,
     visible: true,
+    resizable: true,
     sortable: true,
+    fixed: false,
   },
   {
     id: 'status',
     label: 'Status',
-    icon: <CircleDot className="h-4 w-4" />,
+    icon: <Circle className="h-4 w-4" />,
     width: 130,
     minWidth: 100,
+    maxWidth: 180,
     visible: true,
+    resizable: true,
     sortable: true,
+    fixed: false,
   },
 ];
 
 // ============================================================
-// COLUMN HEADER ITEM
+// HOOKS
 // ============================================================
 
-interface ColumnHeaderItemProps {
-  column: Column;
-  index: number;
-  isDragging: boolean;
-  isOver: boolean;
-  onDragStart: (index: number) => void;
-  onDragOver: (index: number) => void;
-  onDragEnd: () => void;
-  onResize: (columnId: string, width: number) => void;
-  onSort?: (columnId: string) => void;
-  sortBy?: string;
-  sortDirection?: 'asc' | 'desc';
-}
+const STORAGE_KEY = 'workora-columns-v3';
 
-const ColumnHeaderItem: React.FC<ColumnHeaderItemProps> = ({
-  column,
-  index,
-  isDragging,
-  isOver,
-  onDragStart,
-  onDragOver,
-  onDragEnd,
-  onResize,
-  onSort,
-  sortBy,
-  sortDirection,
-}) => {
-  const [isResizing, setIsResizing] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [startWidth, setStartWidth] = useState(column.width);
-  const headerRef = useRef<HTMLDivElement>(null);
+// Only these properties are safe to save/load from localStorage
+// React elements (icon) MUST NOT be serialized - they become plain objects on JSON.parse
+const SERIALIZABLE_COLUMN_KEYS = ['id', 'width', 'visible', 'fixed'] as const;
 
-  // Handle resize
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsResizing(true);
-    setStartX(e.clientX);
-    setStartWidth(column.width);
-  };
+export const useColumns = (initial: Column[] = defaultColumns) => {
+  const [columns, setColumns] = useState<Column[]>(() => {
+    if (typeof window === 'undefined') return initial;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge saved with defaults - ONLY take serializable props from saved data
+        // This prevents serialized React elements (icon) from overwriting real ones
+        return initial.map(defaultCol => {
+          const savedCol = parsed.find((c: any) => c.id === defaultCol.id);
+          if (!savedCol) return defaultCol;
+          // Only pick safe serializable properties from savedCol
+          return {
+            ...defaultCol,
+            width: typeof savedCol.width === 'number' ? savedCol.width : defaultCol.width,
+            visible: typeof savedCol.visible === 'boolean' ? savedCol.visible : defaultCol.visible,
+          };
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to load columns from localStorage');
+    }
+    return initial;
+  });
 
   useEffect(() => {
-    if (!isResizing) return;
+    try {
+      // Only save serializable properties - strip out React elements (icon) and functions
+      const serializable = columns.map(col => ({
+        id: col.id,
+        width: col.width,
+        visible: col.visible,
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+    } catch (e) {
+      console.warn('Failed to save columns to localStorage');
+    }
+  }, [columns]);
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const diff = e.clientX - startX;
-      const newWidth = Math.max(column.minWidth, startWidth + diff);
-      onResize(column.id, newWidth);
-    };
+  const updateColumns = useCallback((newColumns: Column[]) => {
+    setColumns(newColumns);
+  }, []);
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
+  const resetColumns = useCallback(() => {
+    setColumns(initial);
+    localStorage.removeItem(STORAGE_KEY);
+  }, [initial]);
 
+  const toggleColumn = useCallback((columnId: string) => {
+    setColumns(cols =>
+      cols.map(col =>
+        col.id === columnId ? { ...col, visible: !col.visible } : col
+      )
+    );
+  }, []);
+
+  const resizeColumn = useCallback((columnId: string, newWidth: number) => {
+    setColumns(cols =>
+      cols.map(col => {
+        if (col.id !== columnId) return col;
+        const width = Math.max(col.minWidth, Math.min(newWidth, col.maxWidth || 600));
+        return { ...col, width };
+      })
+    );
+  }, []);
+
+  return { columns, updateColumns, resetColumns, toggleColumn, resizeColumn };
+};
+
+// ============================================================
+// COLUMN RESIZE HANDLE
+// ============================================================
+
+interface ResizeHandleProps {
+  columnId: string;
+  onResize: (columnId: string, delta: number) => void;
+  onResizeEnd: () => void;
+}
+
+const ResizeHandle: React.FC<ResizeHandleProps> = ({ columnId, onResize, onResizeEnd }) => {
+  const handleRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef(0);
+  const isDraggingRef = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDraggingRef.current = true;
+    startXRef.current = e.clientX;
+    
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  };
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, startX, startWidth, column.id, column.minWidth, onResize]);
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDraggingRef.current) return;
+    const delta = e.clientX - startXRef.current;
+    startXRef.current = e.clientX;
+    onResize(columnId, delta);
+  };
 
-  const isSorted = sortBy === column.id;
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    onResizeEnd();
+  };
 
   return (
     <div
-      ref={headerRef}
-      className={cn(
-        'group relative flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-500 select-none',
-        'border-r border-gray-100 last:border-r-0',
-        'transition-colors duration-150',
-        !column.fixed && 'cursor-grab active:cursor-grabbing',
-        isDragging && 'opacity-50 bg-gray-100',
-        isOver && 'bg-purple-50 border-l-2 border-l-purple-400',
-        column.sortable && 'hover:text-gray-700 hover:bg-gray-50'
-      )}
-      style={{ width: column.width, minWidth: column.minWidth }}
-      draggable={!column.fixed}
-      onDragStart={(e) => {
-        if (column.fixed) {
-          e.preventDefault();
-          return;
-        }
-        e.dataTransfer.effectAllowed = 'move';
-        onDragStart(index);
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        if (!column.fixed) {
-          onDragOver(index);
-        }
-      }}
-      onDragEnd={onDragEnd}
-      onClick={() => column.sortable && onSort?.(column.id)}
+      ref={handleRef}
+      onMouseDown={handleMouseDown}
+      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize group/resize z-20 hover:bg-purple-400"
+      title="Drag to resize"
     >
-      {/* Drag Handle (hidden for fixed columns) */}
-      {!column.fixed && (
-        <GripVertical className="h-3.5 w-3.5 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
-      )}
-
-      {/* Column Label */}
-      <span className="truncate">{column.label}</span>
-
-      {/* Sort Indicator */}
-      {isSorted && (
-        <ChevronDown
-          className={cn(
-            'h-3.5 w-3.5 text-gray-400 transition-transform',
-            sortDirection === 'asc' && 'rotate-180'
-          )}
-        />
-      )}
-
-      {/* Resize Handle */}
-      <div
-        className={cn(
-          'absolute right-0 top-0 bottom-0 w-1 cursor-col-resize',
-          'hover:bg-purple-400 transition-colors',
-          isResizing && 'bg-purple-400'
-        )}
-        onMouseDown={handleResizeStart}
-        onClick={(e) => e.stopPropagation()}
-      />
+      {/* Wider hit area */}
+      <div className="absolute -left-1 -right-1 top-0 bottom-0" />
+      {/* Visual indicator on hover */}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-300 group-hover/resize:bg-purple-500 rounded-full opacity-0 group-hover/resize:opacity-100 transition-opacity" />
     </div>
   );
 };
 
 // ============================================================
-// ADD COLUMN / FIELD DROPDOWN
+// COLUMN VISIBILITY DROPDOWN
 // ============================================================
 
-interface AddColumnDropdownProps {
+interface ColumnVisibilityDropdownProps {
   columns: Column[];
-  onToggleColumn: (columnId: string) => void;
-  onAddCustomColumn?: (fieldType: FieldType) => void;
+  onToggle: (columnId: string) => void;
+  onReset: () => void;
 }
 
-const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
+const ColumnVisibilityDropdown: React.FC<ColumnVisibilityDropdownProps> = ({
   columns,
-  onToggleColumn,
-  onAddCustomColumn,
+  onToggle,
+  onReset,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'columns' | 'fields'>('columns');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
-        setSearch('');
       }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const filteredColumns = columns.filter(
-    (c) => !c.fixed && c.label.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const filteredFields = AVAILABLE_FIELD_TYPES.filter(
-    (f) => f.label.toLowerCase().includes(search.toLowerCase())
-  );
+  }, [isOpen]);
 
   return (
-    <div ref={dropdownRef} className="relative">
+    <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          'flex items-center justify-center w-8 h-8 rounded',
-          'text-gray-400 hover:text-purple-600 hover:bg-purple-50',
-          'transition-colors'
-        )}
+        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+        title="Column settings"
       >
-        <Plus className="h-4 w-4" />
+        <ChevronDown className="h-4 w-4" />
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-          {/* Tabs */}
-          <div className="flex border-b border-gray-100 px-2 mb-2">
+        <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
+          <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Show/Hide Columns
+          </div>
+          
+          {columns.map((col) => (
             <button
-              onClick={() => setActiveTab('columns')}
+              key={col.id}
+              onClick={() => !col.fixed && onToggle(col.id)}
+              disabled={col.fixed}
               className={cn(
-                'flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors',
-                activeTab === 'columns'
-                  ? 'text-purple-600 border-purple-600'
-                  : 'text-gray-500 border-transparent hover:text-gray-700'
+                "flex items-center gap-3 w-full px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors",
+                col.fixed && "opacity-50 cursor-not-allowed hover:bg-transparent"
               )}
             >
-              Show/Hide
-            </button>
-            <button
-              onClick={() => setActiveTab('fields')}
-              className={cn(
-                'flex-1 px-3 py-2 text-sm font-medium border-b-2 transition-colors',
-                activeTab === 'fields'
-                  ? 'text-purple-600 border-purple-600'
-                  : 'text-gray-500 border-transparent hover:text-gray-700'
+              {col.visible ? (
+                <Eye className="h-4 w-4 text-purple-500" />
+              ) : (
+                <EyeOff className="h-4 w-4 text-gray-300" />
               )}
-            >
-              Add Field
+              <span className={col.visible ? 'text-gray-700' : 'text-gray-400'}>
+                {col.label}
+              </span>
+              {col.fixed && (
+                <span className="ml-auto text-xs text-gray-400">Required</span>
+              )}
             </button>
-          </div>
+          ))}
 
-          {/* Search */}
-          <div className="px-2 mb-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-              />
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="max-h-64 overflow-y-auto">
-            {activeTab === 'columns' ? (
-              // Show/Hide Columns
-              <>
-                {filteredColumns.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-gray-500 text-center">No columns found</div>
-                ) : (
-                  filteredColumns.map((column) => (
-                    <button
-                      key={column.id}
-                      onClick={() => onToggleColumn(column.id)}
-                      className="flex items-center gap-3 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      <span className="text-gray-400">{column.icon}</span>
-                      <span className="flex-1 text-left">{column.label}</span>
-                      {column.visible ? (
-                        <Eye className="h-4 w-4 text-purple-500" />
-                      ) : (
-                        <EyeOff className="h-4 w-4 text-gray-300" />
-                      )}
-                    </button>
-                  ))
-                )}
-              </>
-            ) : (
-              // Add Field Types
-              <>
-                {filteredFields.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-gray-500 text-center">No fields found</div>
-                ) : (
-                  filteredFields.map((field) => (
-                    <button
-                      key={field.id}
-                      onClick={() => {
-                        onAddCustomColumn?.(field);
-                        setIsOpen(false);
-                      }}
-                      className="flex items-start gap-3 w-full p-2 mx-1 rounded-lg text-left hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-lg text-gray-600 flex-shrink-0">
-                        {field.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900">{field.label}</div>
-                        {field.description && (
-                          <div className="text-xs text-gray-500 truncate">{field.description}</div>
-                        )}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </>
-            )}
+          <div className="border-t border-gray-100 mt-2 pt-2">
+            <button
+              onClick={() => {
+                onReset();
+                setIsOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-3 py-2 text-sm text-left text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset to defaults
+            </button>
           </div>
         </div>
       )}
@@ -435,227 +370,111 @@ const AddColumnDropdown: React.FC<AddColumnDropdownProps> = ({
 };
 
 // ============================================================
-// MAIN TASK LIST HEADER COMPONENT
+// MAIN HEADER COMPONENT
 // ============================================================
 
 export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
   columns,
   onColumnsChange,
   onSort,
-  sortBy,
+  sortColumn,
+  sortBy, // Alias for sortColumn
   sortDirection,
-  onAddField,
-  className,
 }) => {
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
+  const visibleColumns = columns.filter((col) => col.visible);
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
 
-  // Handle drag start
-  const handleDragStart = useCallback((index: number) => {
-    setDraggedIndex(index);
+  // Use sortBy as fallback for sortColumn (for compatibility)
+  const activeSortColumn = sortColumn || sortBy;
+
+  const handleResize = useCallback((columnId: string, delta: number) => {
+    setResizingColumn(columnId);
+    const newColumns = columns.map(col => {
+      if (col.id !== columnId) return col;
+      const newWidth = Math.max(col.minWidth, Math.min(col.width + delta, col.maxWidth || 600));
+      return { ...col, width: newWidth };
+    });
+    onColumnsChange(newColumns);
+  }, [columns, onColumnsChange]);
+
+  const handleResizeEnd = useCallback(() => {
+    setResizingColumn(null);
   }, []);
 
-  // Handle drag over
-  const handleDragOver = useCallback((index: number) => {
-    setOverIndex(index);
-  }, []);
+  const handleSort = (columnId: string) => {
+    if (!onSort) return;
+    const column = columns.find(c => c.id === columnId);
+    if (!column?.sortable) return;
+    
+    const newDirection = activeSortColumn === columnId && sortDirection === 'asc' ? 'desc' : 'asc';
+    onSort(columnId, newDirection);
+  };
 
-  // Handle drag end - reorder columns
-  const handleDragEnd = useCallback(() => {
-    if (draggedIndex === null || overIndex === null || draggedIndex === overIndex) {
-      setDraggedIndex(null);
-      setOverIndex(null);
-      return;
-    }
+  const toggleColumn = (columnId: string) => {
+    const newColumns = columns.map(col =>
+      col.id === columnId ? { ...col, visible: !col.visible } : col
+    );
+    onColumnsChange(newColumns);
+  };
 
-    const visibleColumns = columns.filter((c) => c.visible);
-    const newColumns = [...visibleColumns];
-    const [draggedColumn] = newColumns.splice(draggedIndex, 1);
-    newColumns.splice(overIndex, 0, draggedColumn);
+  const resetColumns = () => {
+    onColumnsChange(defaultColumns);
+  };
 
-    // Merge back with hidden columns
-    const hiddenColumns = columns.filter((c) => !c.visible);
-    onColumnsChange([...newColumns, ...hiddenColumns]);
-
-    setDraggedIndex(null);
-    setOverIndex(null);
-  }, [draggedIndex, overIndex, columns, onColumnsChange]);
-
-  // Handle column resize
-  const handleResize = useCallback(
-    (columnId: string, width: number) => {
-      const newColumns = columns.map((col) =>
-        col.id === columnId ? { ...col, width } : col
-      );
-      onColumnsChange(newColumns);
-    },
-    [columns, onColumnsChange]
-  );
-
-  // Handle column visibility toggle
-  const handleToggleColumn = useCallback(
-    (columnId: string) => {
-      const newColumns = columns.map((col) =>
-        col.id === columnId ? { ...col, visible: !col.visible } : col
-      );
-      onColumnsChange(newColumns);
-    },
-    [columns, onColumnsChange]
-  );
-
-  // Handle sort
-  const handleSort = useCallback(
-    (columnId: string) => {
-      if (!onSort) return;
-      const newDirection =
-        sortBy === columnId && sortDirection === 'asc' ? 'desc' : 'asc';
-      onSort(columnId, newDirection);
-    },
-    [onSort, sortBy, sortDirection]
-  );
-
-  // Handle add custom field
-  const handleAddField = useCallback(
-    (fieldType: FieldType) => {
-      // Create new column from field type
-      const newColumn: Column = {
-        id: fieldType.id + '-' + Date.now(),
-        label: fieldType.label,
-        icon: fieldType.icon,
-        width: 120,
-        minWidth: 80,
-        visible: true,
-        sortable: true,
-      };
-
-      onColumnsChange([...columns.filter(c => c.visible), newColumn, ...columns.filter(c => !c.visible)]);
-      onAddField?.(fieldType);
-    },
-    [columns, onColumnsChange, onAddField]
-  );
-
-  const visibleColumns = columns.filter((c) => c.visible);
+  // Calculate total width
+  const totalWidth = visibleColumns.reduce((sum, col) => sum + col.width, 0) + 70;
 
   return (
     <div
-      className={cn(
-        'flex items-center bg-white border-b border-gray-200',
-        'sticky top-0 z-10',
-        className
-      )}
+      className="flex items-center bg-white border-b border-gray-200 sticky top-0 z-20"
+      style={{ minWidth: totalWidth }}
     >
-      {/* Checkbox Column */}
-      <div className="flex items-center justify-center w-10 px-2 py-2.5">
-        <input
-          type="checkbox"
-          className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-        />
-      </div>
+      {/* Spacer for drag handle */}
+      <div className="w-6 flex-shrink-0" />
 
-      {/* Column Headers */}
-      {visibleColumns.map((column, index) => (
-        <ColumnHeaderItem
+      {/* Column headers */}
+      {visibleColumns.map((column) => (
+        <div
           key={column.id}
-          column={column}
-          index={index}
-          isDragging={draggedIndex === index}
-          isOver={overIndex === index && draggedIndex !== index}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onResize={handleResize}
-          onSort={handleSort}
-          sortBy={sortBy}
-          sortDirection={sortDirection}
-        />
+          className={cn(
+            'relative flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider select-none flex-shrink-0',
+            column.sortable && 'cursor-pointer hover:text-gray-700',
+            resizingColumn === column.id && 'bg-purple-50'
+          )}
+          style={{ width: column.width }}
+          onClick={() => column.sortable && handleSort(column.id)}
+        >
+          {React.isValidElement(column.icon) ? column.icon : null}
+          <span className="truncate">{column.label}</span>
+          
+          {/* Sort indicator */}
+          {activeSortColumn === column.id && (
+            <span className="text-purple-500">
+              {sortDirection === 'asc' ? '↑' : '↓'}
+            </span>
+          )}
+
+          {/* Resize handle */}
+          {column.resizable && (
+            <ResizeHandle
+              columnId={column.id}
+              onResize={handleResize}
+              onResizeEnd={handleResizeEnd}
+            />
+          )}
+        </div>
       ))}
 
-      {/* Add Column Button */}
-      <div className="flex items-center px-2 py-2.5">
-        <AddColumnDropdown
+      {/* Actions column header */}
+      <div className="flex items-center gap-1 px-2 min-w-[100px] justify-end flex-shrink-0">
+        <ColumnVisibilityDropdown
           columns={columns}
-          onToggleColumn={handleToggleColumn}
-          onAddCustomColumn={handleAddField}
+          onToggle={toggleColumn}
+          onReset={resetColumns}
         />
       </div>
     </div>
   );
 };
-
-// ============================================================
-// HOOK FOR COLUMN MANAGEMENT
-// ============================================================
-
-const STORAGE_KEY = 'workora-columns';
-
-export function useColumns(initialColumns: Column[] = defaultColumns) {
-  const [columns, setColumns] = useState<Column[]>(() => {
-    // Try to load from localStorage
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Merge with defaults to handle new columns
-          return initialColumns.map((defaultCol) => {
-            const savedCol = parsed.find((c: Column) => c.id === defaultCol.id);
-            return savedCol
-              ? { ...defaultCol, ...savedCol, icon: defaultCol.icon }
-              : defaultCol;
-          });
-        } catch {
-          return initialColumns;
-        }
-      }
-    }
-    return initialColumns;
-  });
-
-  // Save to localStorage on change
-  useEffect(() => {
-    const toSave = columns.map(({ icon, ...rest }) => rest);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-  }, [columns]);
-
-  const updateColumns = useCallback((newColumns: Column[]) => {
-    setColumns(newColumns);
-  }, []);
-
-  const resetColumns = useCallback(() => {
-    setColumns(initialColumns);
-    localStorage.removeItem(STORAGE_KEY);
-  }, [initialColumns]);
-
-  const showColumn = useCallback((columnId: string) => {
-    setColumns((prev) =>
-      prev.map((col) => (col.id === columnId ? { ...col, visible: true } : col))
-    );
-  }, []);
-
-  const hideColumn = useCallback((columnId: string) => {
-    setColumns((prev) =>
-      prev.map((col) => (col.id === columnId ? { ...col, visible: false } : col))
-    );
-  }, []);
-
-  const moveColumn = useCallback((fromIndex: number, toIndex: number) => {
-    setColumns((prev) => {
-      const visible = prev.filter((c) => c.visible);
-      const hidden = prev.filter((c) => !c.visible);
-      const [moved] = visible.splice(fromIndex, 1);
-      visible.splice(toIndex, 0, moved);
-      return [...visible, ...hidden];
-    });
-  }, []);
-
-  return {
-    columns,
-    updateColumns,
-    resetColumns,
-    showColumn,
-    hideColumn,
-    moveColumn,
-  };
-}
 
 export default TaskListHeader;
