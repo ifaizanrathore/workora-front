@@ -8,17 +8,21 @@ import {
   Hash,
   Timer,
   Flag,
-  Circle,
+  CircleDot,
   Target,
   ChevronDown,
   Eye,
   EyeOff,
   RotateCcw,
+  Search,
+  Plus,
+  Check,
+  Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ============================================================
-// TYPES
+// SHARED TYPES
 // ============================================================
 
 export interface Column {
@@ -31,40 +35,40 @@ export interface Column {
   visible: boolean;
   resizable?: boolean;
   sortable?: boolean;
-  fixed?: boolean; // If true, column cannot be hidden or reordered
+  fixed?: boolean;
 }
 
-export interface TaskListHeaderProps {
-  columns: Column[];
-  onColumnsChange: (columns: Column[]) => void;
-  onSort?: (columnId: string, direction: 'asc' | 'desc') => void;
-  sortColumn?: string;
-  sortBy?: string; // Alias for sortColumn (for compatibility)
-  sortDirection?: 'asc' | 'desc';
+/** Re-export for CellDropdowns / TaskList compatibility */
+export interface StatusOption {
+  id?: string | number | null;
+  status?: string | null;
+  color?: string | null;
+  type?: string | null;
+  orderindex?: number | null;
 }
 
 // ============================================================
-// DEFAULT COLUMNS
+// DEFAULT COLUMNS — Status moved to position 2 (was position 8)
 // ============================================================
 
 export const defaultColumns: Column[] = [
   {
     id: 'name',
     label: 'Name',
-    icon: <Type className="h-4 w-4" />,
-    width: 350,
+    icon: <Type className="h-3.5 w-3.5" />,
+    width: 320,
     minWidth: 200,
     maxWidth: 600,
     visible: true,
     resizable: true,
     sortable: true,
-    fixed: true, // Name column cannot be hidden
+    fixed: true,
   },
   {
-    id: 'dueDate',
-    label: 'Due date',
-    icon: <Calendar className="h-4 w-4" />,
-    width: 130,
+    id: 'status',
+    label: 'Status',
+    icon: <CircleDot className="h-3.5 w-3.5" />,
+    width: 140,
     minWidth: 100,
     maxWidth: 200,
     visible: true,
@@ -75,7 +79,7 @@ export const defaultColumns: Column[] = [
   {
     id: 'assignee',
     label: 'Assignee',
-    icon: <Users className="h-4 w-4" />,
+    icon: <Users className="h-3.5 w-3.5" />,
     width: 120,
     minWidth: 80,
     maxWidth: 200,
@@ -84,22 +88,11 @@ export const defaultColumns: Column[] = [
     fixed: false,
   },
   {
-    id: 'tags',
-    label: 'Tags',
-    icon: <Hash className="h-4 w-4" />,
-    width: 180,
+    id: 'dueDate',
+    label: 'Due date',
+    icon: <Calendar className="h-3.5 w-3.5" />,
+    width: 130,
     minWidth: 100,
-    maxWidth: 300,
-    visible: true,
-    resizable: true,
-    fixed: false,
-  },
-  {
-    id: 'eta',
-    label: 'ETA',
-    icon: <Timer className="h-4 w-4" />,
-    width: 150,
-    minWidth: 120,
     maxWidth: 200,
     visible: true,
     resizable: true,
@@ -107,20 +100,9 @@ export const defaultColumns: Column[] = [
     fixed: false,
   },
   {
-    id: 'timer',
-    label: 'Timer',
-    icon: <Target className="h-4 w-4" />,
-    width: 120,
-    minWidth: 100,
-    maxWidth: 180,
-    visible: true,
-    resizable: true,
-    fixed: false,
-  },
-  {
     id: 'priority',
     label: 'Priority',
-    icon: <Flag className="h-4 w-4" />,
+    icon: <Flag className="h-3.5 w-3.5" />,
     width: 110,
     minWidth: 90,
     maxWidth: 150,
@@ -130,28 +112,46 @@ export const defaultColumns: Column[] = [
     fixed: false,
   },
   {
-    id: 'status',
-    label: 'Status',
-    icon: <Circle className="h-4 w-4" />,
+    id: 'tags',
+    label: 'Tags',
+    icon: <Hash className="h-3.5 w-3.5" />,
+    width: 160,
+    minWidth: 100,
+    maxWidth: 300,
+    visible: true,
+    resizable: true,
+    fixed: false,
+  },
+  {
+    id: 'eta',
+    label: 'ETA',
+    icon: <Timer className="h-3.5 w-3.5" />,
     width: 130,
     minWidth: 100,
-    maxWidth: 180,
+    maxWidth: 200,
     visible: true,
     resizable: true,
     sortable: true,
     fixed: false,
   },
+  {
+    id: 'timer',
+    label: 'Timer',
+    icon: <Target className="h-3.5 w-3.5" />,
+    width: 110,
+    minWidth: 90,
+    maxWidth: 180,
+    visible: true,
+    resizable: true,
+    fixed: false,
+  },
 ];
 
 // ============================================================
-// HOOKS
+// HOOKS — useColumns with safe localStorage (no React elements)
 // ============================================================
 
-const STORAGE_KEY = 'workora-columns-v3';
-
-// Only these properties are safe to save/load from localStorage
-// React elements (icon) MUST NOT be serialized - they become plain objects on JSON.parse
-const SERIALIZABLE_COLUMN_KEYS = ['id', 'width', 'visible', 'fixed'] as const;
+const STORAGE_KEY = 'workora-columns-v4';
 
 export const useColumns = (initial: Column[] = defaultColumns) => {
   const [columns, setColumns] = useState<Column[]>(() => {
@@ -159,13 +159,10 @@ export const useColumns = (initial: Column[] = defaultColumns) => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        // Merge saved with defaults - ONLY take serializable props from saved data
-        // This prevents serialized React elements (icon) from overwriting real ones
-        return initial.map(defaultCol => {
-          const savedCol = parsed.find((c: any) => c.id === defaultCol.id);
+        const parsed: { id: string; width: number; visible: boolean }[] = JSON.parse(saved);
+        return initial.map((defaultCol) => {
+          const savedCol = parsed.find((c) => c.id === defaultCol.id);
           if (!savedCol) return defaultCol;
-          // Only pick safe serializable properties from savedCol
           return {
             ...defaultCol,
             width: typeof savedCol.width === 'number' ? savedCol.width : defaultCol.width,
@@ -173,7 +170,7 @@ export const useColumns = (initial: Column[] = defaultColumns) => {
           };
         });
       }
-    } catch (e) {
+    } catch {
       console.warn('Failed to load columns from localStorage');
     }
     return initial;
@@ -181,21 +178,14 @@ export const useColumns = (initial: Column[] = defaultColumns) => {
 
   useEffect(() => {
     try {
-      // Only save serializable properties - strip out React elements (icon) and functions
-      const serializable = columns.map(col => ({
-        id: col.id,
-        width: col.width,
-        visible: col.visible,
-      }));
+      const serializable = columns.map((col) => ({ id: col.id, width: col.width, visible: col.visible }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
-    } catch (e) {
+    } catch {
       console.warn('Failed to save columns to localStorage');
     }
   }, [columns]);
 
-  const updateColumns = useCallback((newColumns: Column[]) => {
-    setColumns(newColumns);
-  }, []);
+  const updateColumns = useCallback((newColumns: Column[]) => setColumns(newColumns), []);
 
   const resetColumns = useCallback(() => {
     setColumns(initial);
@@ -203,19 +193,16 @@ export const useColumns = (initial: Column[] = defaultColumns) => {
   }, [initial]);
 
   const toggleColumn = useCallback((columnId: string) => {
-    setColumns(cols =>
-      cols.map(col =>
-        col.id === columnId ? { ...col, visible: !col.visible } : col
-      )
+    setColumns((cols) =>
+      cols.map((col) => (col.id === columnId && !col.fixed ? { ...col, visible: !col.visible } : col))
     );
   }, []);
 
   const resizeColumn = useCallback((columnId: string, newWidth: number) => {
-    setColumns(cols =>
-      cols.map(col => {
+    setColumns((cols) =>
+      cols.map((col) => {
         if (col.id !== columnId) return col;
-        const width = Math.max(col.minWidth, Math.min(newWidth, col.maxWidth || 600));
-        return { ...col, width };
+        return { ...col, width: Math.max(col.minWidth, Math.min(newWidth, col.maxWidth || 600)) };
       })
     );
   }, []);
@@ -224,254 +211,241 @@ export const useColumns = (initial: Column[] = defaultColumns) => {
 };
 
 // ============================================================
-// COLUMN RESIZE HANDLE
+// RESIZE HANDLE
 // ============================================================
 
-interface ResizeHandleProps {
+const ResizeHandle: React.FC<{
   columnId: string;
   onResize: (columnId: string, delta: number) => void;
   onResizeEnd: () => void;
-}
+}> = ({ columnId, onResize, onResizeEnd }) => {
+  const isDragging = useRef(false);
+  const startX = useRef(0);
 
-const ResizeHandle: React.FC<ResizeHandleProps> = ({ columnId, onResize, onResizeEnd }) => {
-  const handleRef = useRef<HTMLDivElement>(null);
-  const startXRef = useRef(0);
-  const isDraggingRef = useRef(false);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    isDraggingRef.current = true;
-    startXRef.current = e.clientX;
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    isDragging.current = true;
+    startX.current = e.clientX;
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current) return;
+      onResize(columnId, ev.clientX - startX.current);
+      startX.current = ev.clientX;
+    };
+    const onUp = () => {
+      isDragging.current = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      onResizeEnd();
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDraggingRef.current) return;
-    const delta = e.clientX - startXRef.current;
-    startXRef.current = e.clientX;
-    onResize(columnId, delta);
-  };
-
-  const handleMouseUp = () => {
-    isDraggingRef.current = false;
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    onResizeEnd();
-  };
-
   return (
-    <div
-      ref={handleRef}
-      onMouseDown={handleMouseDown}
-      className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize group/resize z-20 hover:bg-purple-400"
-      title="Drag to resize"
-    >
-      {/* Wider hit area */}
-      <div className="absolute -left-1 -right-1 top-0 bottom-0" />
-      {/* Visual indicator on hover */}
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-300 group-hover/resize:bg-purple-500 rounded-full opacity-0 group-hover/resize:opacity-100 transition-opacity" />
+    <div onMouseDown={onMouseDown} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-20 hover:bg-purple-400 transition-colors">
+      <div className="absolute -left-1.5 -right-1.5 top-0 bottom-0" />
     </div>
   );
 };
 
 // ============================================================
-// COLUMN VISIBILITY DROPDOWN
+// FIELDS PANEL (ClickUp-style column manager)
 // ============================================================
 
-interface ColumnVisibilityDropdownProps {
+const FieldsPanel: React.FC<{
   columns: Column[];
-  onToggle: (columnId: string) => void;
+  onToggle: (id: string) => void;
   onReset: () => void;
-}
-
-const ColumnVisibilityDropdown: React.FC<ColumnVisibilityDropdownProps> = ({
-  columns,
-  onToggle,
-  onReset,
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  isOpen: boolean;
+  onClose: () => void;
+}> = ({ columns, onToggle, onReset, isOpen, onClose }) => {
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+    if (isOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const toggleable = columns.filter((c) => !c.fixed);
+  const filtered = search
+    ? toggleable.filter((c) => c.label.toLowerCase().includes(search.toLowerCase()))
+    : toggleable;
+  const shown = filtered.filter((c) => c.visible);
+  const hidden = filtered.filter((c) => !c.visible);
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-        title="Column settings"
-      >
-        <ChevronDown className="h-4 w-4" />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-          <div className="px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Show/Hide Columns
-          </div>
-          
-          {columns.map((col) => (
-            <button
-              key={col.id}
-              onClick={() => !col.fixed && onToggle(col.id)}
-              disabled={col.fixed}
-              className={cn(
-                "flex items-center gap-3 w-full px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors",
-                col.fixed && "opacity-50 cursor-not-allowed hover:bg-transparent"
-              )}
-            >
-              {col.visible ? (
-                <Eye className="h-4 w-4 text-purple-500" />
-              ) : (
-                <EyeOff className="h-4 w-4 text-gray-300" />
-              )}
-              <span className={col.visible ? 'text-gray-700' : 'text-gray-400'}>
-                {col.label}
-              </span>
-              {col.fixed && (
-                <span className="ml-auto text-xs text-gray-400">Required</span>
-              )}
-            </button>
-          ))}
-
-          <div className="border-t border-gray-100 mt-2 pt-2">
-            <button
-              onClick={() => {
-                onReset();
-                setIsOpen(false);
-              }}
-              className="flex items-center gap-3 w-full px-3 py-2 text-sm text-left text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset to defaults
-            </button>
-          </div>
+    <div ref={ref} className="absolute right-0 top-full mt-1 z-50 w-60 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
+      {/* Search */}
+      <div className="p-2 border-b border-gray-100">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search fields..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md bg-gray-50 focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-400"
+          />
         </div>
-      )}
+      </div>
+
+      <div className="max-h-64 overflow-y-auto py-1">
+        {shown.length > 0 && (
+          <div>
+            <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Shown</div>
+            {shown.map((col) => (
+              <button key={col.id} onClick={() => onToggle(col.id)} className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors">
+                <div className="w-4 h-4 rounded border-[1.5px] border-purple-500 bg-purple-500 flex items-center justify-center">
+                  <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
+                </div>
+                <span className="text-gray-700">{col.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {hidden.length > 0 && (
+          <div className={shown.length > 0 ? 'border-t border-gray-100 mt-1 pt-1' : ''}>
+            <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hidden</div>
+            {hidden.map((col) => (
+              <button key={col.id} onClick={() => onToggle(col.id)} className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors">
+                <div className="w-4 h-4 rounded border-[1.5px] border-gray-300 bg-white" />
+                <span className="text-gray-400">{col.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {filtered.length === 0 && <div className="px-3 py-3 text-center text-sm text-gray-400">No fields found</div>}
+      </div>
+
+      <div className="border-t border-gray-100 p-1.5">
+        <button onClick={() => { onReset(); onClose(); }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 rounded-md transition-colors">
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset to defaults
+        </button>
+      </div>
     </div>
   );
 };
 
 // ============================================================
-// MAIN HEADER COMPONENT
+// MAIN HEADER
 // ============================================================
+
+export interface TaskListHeaderProps {
+  columns: Column[];
+  onColumnsChange: (columns: Column[]) => void;
+  onSort?: (columnId: string, direction: 'asc' | 'desc') => void;
+  sortColumn?: string;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+  allSelected?: boolean;
+  someSelected?: boolean;
+  onSelectAll?: (selected: boolean) => void;
+  taskCount?: number;
+}
 
 export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
   columns,
   onColumnsChange,
   onSort,
   sortColumn,
-  sortBy, // Alias for sortColumn
+  sortBy,
   sortDirection,
+  allSelected,
+  someSelected,
+  onSelectAll,
 }) => {
-  const visibleColumns = columns.filter((col) => col.visible);
-  const [resizingColumn, setResizingColumn] = useState<string | null>(null);
+  const visible = columns.filter((c) => c.visible);
+  const [resizingCol, setResizingCol] = useState<string | null>(null);
+  const [showFields, setShowFields] = useState(false);
+  const activeSort = sortColumn || sortBy;
 
-  // Use sortBy as fallback for sortColumn (for compatibility)
-  const activeSortColumn = sortColumn || sortBy;
+  const handleResize = useCallback(
+    (colId: string, delta: number) => {
+      setResizingCol(colId);
+      onColumnsChange(
+        columns.map((c) => {
+          if (c.id !== colId) return c;
+          return { ...c, width: Math.max(c.minWidth, Math.min(c.width + delta, c.maxWidth || 600)) };
+        })
+      );
+    },
+    [columns, onColumnsChange]
+  );
 
-  const handleResize = useCallback((columnId: string, delta: number) => {
-    setResizingColumn(columnId);
-    const newColumns = columns.map(col => {
-      if (col.id !== columnId) return col;
-      const newWidth = Math.max(col.minWidth, Math.min(col.width + delta, col.maxWidth || 600));
-      return { ...col, width: newWidth };
-    });
-    onColumnsChange(newColumns);
-  }, [columns, onColumnsChange]);
-
-  const handleResizeEnd = useCallback(() => {
-    setResizingColumn(null);
-  }, []);
-
-  const handleSort = (columnId: string) => {
+  const handleSort = (colId: string) => {
     if (!onSort) return;
-    const column = columns.find(c => c.id === columnId);
-    if (!column?.sortable) return;
-    
-    const newDirection = activeSortColumn === columnId && sortDirection === 'asc' ? 'desc' : 'asc';
-    onSort(columnId, newDirection);
+    const col = columns.find((c) => c.id === colId);
+    if (!col?.sortable) return;
+    onSort(colId, activeSort === colId && sortDirection === 'asc' ? 'desc' : 'asc');
   };
 
-  const toggleColumn = (columnId: string) => {
-    const newColumns = columns.map(col =>
-      col.id === columnId ? { ...col, visible: !col.visible } : col
-    );
-    onColumnsChange(newColumns);
+  const toggleCol = (id: string) => {
+    onColumnsChange(columns.map((c) => (c.id === id && !c.fixed ? { ...c, visible: !c.visible } : c)));
   };
 
-  const resetColumns = () => {
+  const resetCols = () => {
     onColumnsChange(defaultColumns);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
-  // Calculate total width
-  const totalWidth = visibleColumns.reduce((sum, col) => sum + col.width, 0) + 70;
+  const totalW = visible.reduce((s, c) => s + c.width, 0) + 96;
 
   return (
-    <div
-      className="flex items-center bg-white border-b border-gray-200 sticky top-0 z-20"
-      style={{ minWidth: totalWidth }}
-    >
-      {/* Spacer for drag handle */}
-      <div className="w-6 flex-shrink-0" />
-
-      {/* Column headers */}
-      {visibleColumns.map((column) => (
-        <div
-          key={column.id}
+    <div className="flex items-center bg-gray-50/80 border-b border-gray-200 sticky top-0 z-20" style={{ minWidth: totalW }}>
+      {/* Checkbox + drag spacer */}
+      <div className="w-[60px] flex-shrink-0 flex items-center pl-3 pr-1">
+        <button
+          onClick={() => onSelectAll?.(!allSelected)}
           className={cn(
-            'relative flex items-center gap-2 px-3 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wider select-none flex-shrink-0',
-            column.sortable && 'cursor-pointer hover:text-gray-700',
-            resizingColumn === column.id && 'bg-purple-50'
+            'w-4 h-4 rounded border-[1.5px] flex items-center justify-center transition-all',
+            allSelected ? 'bg-purple-600 border-purple-600' : someSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400 bg-white'
           )}
-          style={{ width: column.width }}
-          onClick={() => column.sortable && handleSort(column.id)}
         >
-          {React.isValidElement(column.icon) ? column.icon : null}
-          <span className="truncate">{column.label}</span>
-          
-          {/* Sort indicator */}
-          {activeSortColumn === column.id && (
-            <span className="text-purple-500">
-              {sortDirection === 'asc' ? '↑' : '↓'}
-            </span>
-          )}
+          {allSelected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+          {someSelected && !allSelected && <Minus className="h-3 w-3 text-white" strokeWidth={3} />}
+        </button>
+      </div>
 
-          {/* Resize handle */}
-          {column.resizable && (
-            <ResizeHandle
-              columnId={column.id}
-              onResize={handleResize}
-              onResizeEnd={handleResizeEnd}
-            />
+      {visible.map((col) => (
+        <div
+          key={col.id}
+          className={cn(
+            'relative flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider select-none flex-shrink-0',
+            col.sortable && 'cursor-pointer hover:text-gray-700 hover:bg-gray-100/50',
+            resizingCol === col.id && 'bg-purple-50'
           )}
+          style={{ width: col.width }}
+          onClick={() => col.sortable && handleSort(col.id)}
+        >
+          <span className="text-gray-400">{React.isValidElement(col.icon) ? col.icon : null}</span>
+          <span className="truncate">{col.label}</span>
+          {activeSort === col.id && <span className="text-purple-500 text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
+          {col.resizable && <ResizeHandle columnId={col.id} onResize={handleResize} onResizeEnd={() => setResizingCol(null)} />}
         </div>
       ))}
 
-      {/* Actions column header */}
-      <div className="flex items-center gap-1 px-2 min-w-[100px] justify-end flex-shrink-0">
-        <ColumnVisibilityDropdown
-          columns={columns}
-          onToggle={toggleColumn}
-          onReset={resetColumns}
-        />
+      {/* + button → Fields panel */}
+      <div className="flex items-center px-2 min-w-[36px] flex-shrink-0 relative">
+        <button
+          onClick={() => setShowFields(!showFields)}
+          className={cn('p-1 rounded hover:bg-gray-200/60 transition-colors', showFields ? 'text-purple-600 bg-purple-50' : 'text-gray-400 hover:text-gray-600')}
+          title="Manage columns"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+        <FieldsPanel columns={columns} onToggle={toggleCol} onReset={resetCols} isOpen={showFields} onClose={() => setShowFields(false)} />
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { useWorkspaceStore, useTaskStore } from '@/stores';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
-import type { Task } from '@/lib/api'; 
+import { Task } from '@/types'; 
 
 export default function HomePage() {
   const { currentList } = useWorkspaceStore();

@@ -12,8 +12,6 @@ import {
   FileText,
   Rss,
   SlidersHorizontal,
-  Eye,
-  EyeOff,
   Check,
   X,
   Columns,
@@ -22,17 +20,26 @@ import {
   MoreHorizontal,
   Settings,
   Loader2,
+  Flag,
+  Calendar,
+  Trash2,
+  Copy,
+  ArrowRight,
+  Tag,
+  CircleDot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types';
 import { api } from '@/lib/api';
-import { TaskListHeader, useColumns, defaultColumns, Column } from './TaskListHeader';
+import { TaskListHeader, useColumns, defaultColumns, Column, StatusOption } from './TaskListHeader';
 import { TaskRow } from './TaskRow';
-import { StatusOption } from './CellDropdowns';
 import { SkeletonTaskList } from '@/components/ui/skeleton';
-import { useTaskStore } from '@/stores';
+import { useTaskStore, useWorkspaceStore } from '@/stores';
 
-// Local type for available users (flexible)
+// ============================================================
+// TYPES
+// ============================================================
+
 interface AvailableUser {
   id: string | number;
   username?: string;
@@ -40,10 +47,6 @@ interface AvailableUser {
   profilePicture?: string;
   color?: string;
 }
-
-// ============================================================
-// TYPES
-// ============================================================
 
 interface TaskListProps {
   tasks: Task[];
@@ -55,7 +58,7 @@ interface TaskListProps {
   onTaskClick?: (task: Task) => void;
   onTaskSelect?: (taskId: string, selected: boolean) => void;
   onAddTask?: () => void;
-  onTaskUpdate?: () => void; // Callback to refresh tasks after update
+  onTaskUpdate?: () => void;
   onTimerToggle?: (taskId: string) => void;
   selectedTasks?: string[];
   groupBy?: 'status' | 'priority' | 'assignee' | 'none';
@@ -71,47 +74,50 @@ interface TaskGroup {
 }
 
 // ============================================================
-// VIEW TABS (List, Board, Form, Feed, + View)
+// CLICKUP STANDARD PRIORITIES
 // ============================================================
 
-interface ViewTabsProps {
-  currentView: string;
-  onViewChange: (view: string) => void;
-}
+const CLICKUP_PRIORITIES = [
+  { id: '1', priority: 'urgent', color: '#F42A2A', orderindex: 1 },
+  { id: '2', priority: 'high', color: '#FFCC00', orderindex: 2 },
+  { id: '3', priority: 'normal', color: '#6B7AFF', orderindex: 3 },
+  { id: '4', priority: 'low', color: '#808080', orderindex: 4 },
+  { id: '', priority: 'none', color: '#d1d5db', orderindex: 5 },
+];
 
-const ViewTabs: React.FC<ViewTabsProps> = ({ currentView, onViewChange }) => {
+// ============================================================
+// VIEW TABS
+// ============================================================
+
+const ViewTabs: React.FC<{ current: string; onChange: (v: string) => void }> = ({ current, onChange }) => {
   const tabs = [
-    { id: 'list', label: 'list', icon: LayoutList },
+    { id: 'list', label: 'List', icon: LayoutList },
     { id: 'board', label: 'Board', icon: LayoutGrid },
     { id: 'form', label: 'Form', icon: FileText },
     { id: 'feed', label: 'Feed', icon: Rss },
   ];
 
   return (
-    <div className="flex items-center gap-1 border-b border-transparent">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = currentView === tab.id;
+    <div className="flex items-center gap-0.5">
+      {tabs.map((t) => {
+        const Icon = t.icon;
+        const active = current === t.id;
         return (
           <button
-            key={tab.id}
-            onClick={() => onViewChange(tab.id)}
+            key={t.id}
+            onClick={() => onChange(t.id)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative',
-              isActive
-                ? 'text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+              active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
             )}
           >
             <Icon className="h-4 w-4" />
-            {tab.label}
-            {isActive && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
-            )}
+            {t.label}
+            {active && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 rounded-full" />}
           </button>
         );
       })}
-      <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors">
+      <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
         <Plus className="h-4 w-4" />
         View
       </button>
@@ -120,346 +126,162 @@ const ViewTabs: React.FC<ViewTabsProps> = ({ currentView, onViewChange }) => {
 };
 
 // ============================================================
-// TOP TOOLBAR (Search, Hide, Customize, Add Task)
+// TOP TOOLBAR
 // ============================================================
 
-interface TopToolbarProps {
+const TopToolbar: React.FC<{
   listName: string;
   onAddTask?: () => void;
-  onSearchToggle: () => void;
   showSearch: boolean;
-  onHideToggle: () => void;
+  onSearchToggle: () => void;
   showHidePanel: boolean;
+  onHideToggle: () => void;
   currentView: string;
-  onViewChange: (view: string) => void;
-}
-
-const TopToolbar: React.FC<TopToolbarProps> = ({
-  listName,
-  onAddTask,
-  onSearchToggle,
-  showSearch,
-  onHideToggle,
-  showHidePanel,
-  currentView,
-  onViewChange,
-}) => {
+  onViewChange: (v: string) => void;
+}> = ({ listName, onAddTask, showSearch, onSearchToggle, showHidePanel, onHideToggle, currentView, onViewChange }) => {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
-      {/* Left - Title & View Tabs */}
+    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold text-gray-900">{listName}</h1>
+          <h1 className="text-lg font-semibold text-gray-900">{listName}</h1>
           <button className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </div>
-        <ViewTabs currentView={currentView} onViewChange={onViewChange} />
+        <ViewTabs current={currentView} onChange={onViewChange} />
       </div>
-
-      {/* Right - Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           onClick={onSearchToggle}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors',
-            showSearch
-              ? 'text-purple-600 bg-purple-50'
-              : 'text-gray-600 hover:bg-gray-100'
-          )}
+          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showSearch ? 'text-purple-600 bg-purple-50' : 'text-gray-600 hover:bg-gray-100')}
         >
           <Search className="h-4 w-4" />
-          Search
+          <span className="hidden sm:inline">Search</span>
         </button>
         <button
           onClick={onHideToggle}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors',
-            showHidePanel
-              ? 'text-purple-600 bg-purple-50'
-              : 'text-gray-600 hover:bg-gray-100'
-          )}
+          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showHidePanel ? 'text-purple-600 bg-purple-50' : 'text-gray-600 hover:bg-gray-100')}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          Hide
+          <span className="hidden sm:inline">Hide</span>
         </button>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
           <Settings className="h-4 w-4" />
-          Customize
+          <span className="hidden sm:inline">Customize</span>
         </button>
-        {/* Add Task Button - Always visible */}
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // Try prop first, then fall back to store
-              if (onAddTask) {
-                onAddTask();
-              } else {
-                // Direct store call as fallback
-                useTaskStore.getState().openCreateModal();
-              }
-            }}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            Add task
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddTask ? onAddTask() : useTaskStore.getState().openCreateModal(); }}
+          className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors ml-1"
+        >
+          <Plus className="h-4 w-4" />
+          Add task
+        </button>
       </div>
     </div>
   );
 };
 
 // ============================================================
-// COLUMNS DROPDOWN
+// FILTER ROW
 // ============================================================
 
-interface ColumnsDropdownProps {
-  columns: Column[];
-  onToggleColumn: (columnId: string) => void;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const ColumnsDropdown: React.FC<ColumnsDropdownProps> = ({
-  columns,
-  onToggleColumn,
-  isOpen,
-  onClose,
-}) => {
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      ref={dropdownRef}
-      className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
-    >
-      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
-        Show/Hide Columns
-      </div>
-      {columns
-        .filter((c) => !c.fixed)
-        .map((column) => (
-          <button
-            key={column.id}
-            onClick={() => onToggleColumn(column.id)}
-            className="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            <div className="flex items-center gap-2">
-              {column.icon}
-              <span>{column.label}</span>
-            </div>
-            {column.visible ? (
-              <Eye className="h-4 w-4 text-purple-500" />
-            ) : (
-              <EyeOff className="h-4 w-4 text-gray-300" />
-            )}
-          </button>
-        ))}
-    </div>
-  );
-};
-
-// ============================================================
-// FILTER ROW (Group, Subtasks, Columns | Filter, Closed, Assignee, Search)
-// ============================================================
-
-interface FilterRowProps {
+const FilterRow: React.FC<{
   groupBy: 'status' | 'priority' | 'assignee' | 'none';
-  onGroupByChange: (groupBy: 'status' | 'priority' | 'assignee' | 'none') => void;
-  onSearch: (query: string) => void;
+  onGroupByChange: (g: 'status' | 'priority' | 'assignee' | 'none') => void;
   searchQuery: string;
-  filterCount?: number;
+  onSearch: (q: string) => void;
   showClosed: boolean;
   onToggleClosed: () => void;
-  columns: Column[];
-  onToggleColumn: (columnId: string) => void;
   showSearch: boolean;
-}
+  filterCount?: number;
+}> = ({ groupBy, onGroupByChange, searchQuery, onSearch, showClosed, onToggleClosed, showSearch, filterCount = 0 }) => {
+  const [showGroupDD, setShowGroupDD] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-const FilterRow: React.FC<FilterRowProps> = ({
-  groupBy,
-  onGroupByChange,
-  onSearch,
-  searchQuery,
-  filterCount = 0,
-  showClosed,
-  onToggleClosed,
-  columns,
-  onToggleColumn,
-  showSearch,
-}) => {
-  const [showGroupDropdown, setShowGroupDropdown] = useState(false);
-  const [showColumnsDropdown, setShowColumnsDropdown] = useState(false);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
-  const groupDropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShowGroupDD(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
-  const groupOptions = [
+  const groupOpts = [
     { id: 'status', label: 'Status' },
     { id: 'priority', label: 'Priority' },
     { id: 'assignee', label: 'Assignee' },
     { id: 'none', label: 'None' },
-  ];
+  ] as const;
 
-  const currentGroup = groupOptions.find((g) => g.id === groupBy)?.label || 'Status';
-
-  // Close dropdowns on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (groupDropdownRef.current && !groupDropdownRef.current.contains(e.target as Node)) {
-        setShowGroupDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const currentLabel = groupOpts.find((g) => g.id === groupBy)?.label || 'Status';
 
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-50/50">
-      {/* Left - Group, Subtasks, Columns */}
-      <div className="flex items-center gap-2">
-        {/* Group Dropdown */}
-        <div className="relative" ref={groupDropdownRef}>
+    <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-200 bg-gray-50/50">
+      <div className="flex items-center gap-1.5">
+        {/* Group */}
+        <div className="relative" ref={ref}>
           <button
-            onClick={() => setShowGroupDropdown(!showGroupDropdown)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() => setShowGroupDD(!showGroupDD)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
           >
-            <ListTree className="h-4 w-4 text-gray-400" />
-            Group: {currentGroup}
-            <ChevronDown className={cn('h-3.5 w-3.5 text-gray-400 transition-transform', showGroupDropdown && 'rotate-180')} />
+            <ListTree className="h-3.5 w-3.5 text-gray-400" />
+            Group: {currentLabel}
+            <ChevronDown className={cn('h-3 w-3 text-gray-400 transition-transform', showGroupDD && 'rotate-180')} />
           </button>
-
-          {showGroupDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-              {groupOptions.map((option) => (
+          {showGroupDD && (
+            <div className="absolute top-full left-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+              {groupOpts.map((o) => (
                 <button
-                  key={option.id}
-                  onClick={() => {
-                    onGroupByChange(option.id as any);
-                    setShowGroupDropdown(false);
-                  }}
-                  className={cn(
-                    'flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors',
-                    groupBy === option.id && 'text-purple-600 bg-purple-50'
-                  )}
+                  key={o.id}
+                  onClick={() => { onGroupByChange(o.id); setShowGroupDD(false); }}
+                  className={cn('flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-gray-50', groupBy === o.id && 'text-purple-600 bg-purple-50')}
                 >
-                  {option.label}
-                  {groupBy === option.id && <Check className="h-4 w-4" />}
+                  {o.label}
+                  {groupBy === o.id && <Check className="h-3.5 w-3.5" />}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Subtasks Button */}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-          <ListTree className="h-4 w-4 text-gray-400" />
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+          <ListTree className="h-3.5 w-3.5 text-gray-400" />
           Subtasks
         </button>
-
-        {/* Columns Button */}
-        <div className="relative">
-          <button
-            onClick={() => setShowColumnsDropdown(!showColumnsDropdown)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors',
-              showColumnsDropdown
-                ? 'text-purple-600 bg-purple-50 border-purple-200'
-                : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
-            )}
-          >
-            <Columns className="h-4 w-4 text-gray-400" />
-            Columns
-          </button>
-          <ColumnsDropdown
-            columns={columns}
-            onToggleColumn={onToggleColumn}
-            isOpen={showColumnsDropdown}
-            onClose={() => setShowColumnsDropdown(false)}
-          />
-        </div>
       </div>
 
-      {/* Right - Filter, Closed, Assignee, Search */}
-      <div className="flex items-center gap-2">
-        {/* Filter */}
-        <button
-          onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors',
-            filterCount > 0
-              ? 'text-purple-600 bg-purple-50 border-purple-200'
-              : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
-          )}
-        >
-          <Filter className="h-4 w-4" />
+      <div className="flex items-center gap-1.5">
+        <button className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', filterCount > 0 ? 'text-purple-600 bg-purple-50 border-purple-200' : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50')}>
+          <Filter className="h-3.5 w-3.5" />
           {filterCount > 0 ? `${filterCount} Filter` : 'Filter'}
         </button>
 
-        {/* Closed Toggle */}
         <button
           onClick={onToggleClosed}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors',
-            showClosed
-              ? 'text-purple-600 bg-purple-50 border-purple-200'
-              : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50'
-          )}
+          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', showClosed ? 'text-purple-600 bg-purple-50 border-purple-200' : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50')}
         >
-          <Check className="h-4 w-4" />
+          <Check className="h-3.5 w-3.5" />
           Closed
         </button>
 
-        {/* Assignee Filter */}
-        <button
-          onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          <Users className="h-4 w-4 text-gray-400" />
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+          <Users className="h-3.5 w-3.5 text-gray-400" />
           Assignee
         </button>
 
-        {/* User Avatar */}
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-purple-200 transition-all">
-          <span className="text-xs font-medium text-white">U</span>
-        </div>
-
-        {/* Search Input */}
         {showSearch && (
-          <div className="relative animate-in slide-in-from-right duration-200">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
             <input
               type="text"
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => onSearch(e.target.value)}
               autoFocus
-              className="w-48 h-9 pl-9 pr-4 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+              className="w-44 h-8 pl-8 pr-8 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
             />
             {searchQuery && (
-              <button
-                onClick={() => onSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-4 w-4" />
+              <button onClick={() => onSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
@@ -473,54 +295,26 @@ const FilterRow: React.FC<FilterRowProps> = ({
 // TASK GROUP HEADER
 // ============================================================
 
-interface TaskGroupHeaderProps {
+const TaskGroupHeader: React.FC<{
   group: TaskGroup;
   isCollapsed: boolean;
   onToggle: () => void;
   onAddTask?: () => void;
   columns: Column[];
-}
-
-const TaskGroupHeader: React.FC<TaskGroupHeaderProps> = ({
-  group,
-  isCollapsed,
-  onToggle,
-  onAddTask,
-  columns,
-}) => {
-  const totalWidth = columns.filter((c) => c.visible).reduce((sum, col) => sum + col.width, 0) + 60;
-
+}> = ({ group, isCollapsed, onToggle, onAddTask, columns }) => {
+  const totalW = columns.filter((c) => c.visible).reduce((s, c) => s + c.width, 0) + 96;
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors group"
+      className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100/80 transition-colors group/gh"
       onClick={onToggle}
-      style={{ minWidth: totalWidth }}
+      style={{ minWidth: totalW }}
     >
-      {isCollapsed ? (
-        <ChevronRight className="h-4 w-4 text-gray-400 transition-transform" />
-      ) : (
-        <ChevronDown className="h-4 w-4 text-gray-400 transition-transform" />
-      )}
-
-      <div
-        className="w-3 h-3 rounded-full"
-        style={{ backgroundColor: group.color || '#9CA3AF' }}
-      />
-
-      <span className="text-sm font-semibold text-gray-700">{group.name}</span>
-
-      <span className="text-xs font-medium text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">
-        {group.tasks.length}
-      </span>
-
+      {isCollapsed ? <ChevronRight className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+      <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: group.color || '#9CA3AF' }} />
+      <span className="text-sm font-semibold text-gray-700 capitalize">{group.name}</span>
+      <span className="text-[10px] font-bold text-gray-400 bg-gray-200/80 px-1.5 py-0.5 rounded">{group.tasks.length}</span>
       {onAddTask && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddTask();
-          }}
-          className="ml-auto p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-        >
+        <button onClick={(e) => { e.stopPropagation(); onAddTask(); }} className="ml-auto p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors opacity-0 group-hover/gh:opacity-100">
           <Plus className="h-4 w-4" />
         </button>
       )}
@@ -529,168 +323,259 @@ const TaskGroupHeader: React.FC<TaskGroupHeaderProps> = ({
 };
 
 // ============================================================
-// ADD TASK ROW
+// ADD TASK ROW (inline quick-add)
 // ============================================================
 
-interface AddTaskRowProps {
+const AddTaskRow: React.FC<{
   columns: Column[];
   onAdd: () => void;
   onQuickAdd?: (name: string) => Promise<void>;
-  listId?: string;
-}
+}> = ({ columns, onAdd, onQuickAdd }) => {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  const totalW = columns.filter((c) => c.visible).reduce((s, c) => s + c.width, 0) + 96;
 
-const AddTaskRow: React.FC<AddTaskRowProps> = ({ columns, onAdd, onQuickAdd, listId }) => {
-  const [isAdding, setIsAdding] = useState(false);
-  const [taskName, setTaskName] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const totalWidth = columns.filter((c) => c.visible).reduce((sum, col) => sum + col.width, 0) + 60;
+  useEffect(() => { if (adding) ref.current?.focus(); }, [adding]);
 
-  useEffect(() => {
-    if (isAdding && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isAdding]);
-
-  const handleSubmit = async () => {
-    if (!taskName.trim()) {
-      setIsAdding(false);
-      return;
-    }
-
+  const submit = async () => {
+    if (!name.trim()) { setAdding(false); return; }
     if (onQuickAdd) {
-      setIsSaving(true);
-      try {
-        await onQuickAdd(taskName.trim());
-        setTaskName('');
-        // Keep input open for rapid task creation
-        inputRef.current?.focus();
-      } catch (error) {
-        console.error('Failed to create task:', error);
-      } finally {
-        setIsSaving(false);
-      }
-    } else {
-      // Fallback to modal
-      onAdd();
-      setIsAdding(false);
-    }
+      setSaving(true);
+      try { await onQuickAdd(name.trim()); setName(''); ref.current?.focus(); } catch {} finally { setSaving(false); }
+    } else { onAdd(); setAdding(false); }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSubmit();
-    } else if (e.key === 'Escape') {
-      setTaskName('');
-      setIsAdding(false);
-    }
-  };
-
-  const handleBlur = () => {
-    if (!taskName.trim()) {
-      setIsAdding(false);
-    }
-  };
-
-  if (isAdding) {
+  if (adding) {
     return (
-      <div
-        className="flex items-center w-full bg-purple-50/50 border-b border-purple-100"
-        style={{ minWidth: totalWidth }}
-      >
-        <div className="w-10 flex items-center justify-center px-2 py-2.5">
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 text-purple-500 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4 text-purple-500" />
-          )}
+      <div className="flex items-center w-full bg-purple-50/30 border-b border-purple-100/50" style={{ minWidth: totalW }}>
+        <div className="w-[60px] flex items-center justify-center">
+          {saving ? <Loader2 className="h-4 w-4 text-purple-500 animate-spin" /> : <Plus className="h-4 w-4 text-purple-500" />}
         </div>
         <div className="flex-1 py-1.5 pr-3">
           <input
-            ref={inputRef}
-            type="text"
-            value={taskName}
-            onChange={(e) => setTaskName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            disabled={isSaving}
+            ref={ref}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } if (e.key === 'Escape') { setName(''); setAdding(false); } }}
+            onBlur={() => { if (!name.trim()) setAdding(false); }}
+            disabled={saving}
             placeholder="Task name (Enter to save, Esc to cancel)"
-            className={cn(
-              'w-full px-3 py-1.5 text-sm rounded border border-purple-300 bg-white',
-              'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent',
-              'placeholder:text-gray-400',
-              isSaving && 'opacity-50'
-            )}
+            className="w-full px-3 py-1.5 text-sm rounded border border-purple-300 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder:text-gray-400"
           />
         </div>
-        <button
-          onClick={() => {
-            setTaskName('');
-            setIsAdding(false);
-          }}
-          className="p-2 mr-2 text-gray-400 hover:text-gray-600"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <button onClick={() => { setName(''); setAdding(false); }} className="p-2 mr-2 text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
       </div>
     );
   }
 
   return (
     <button
-      onClick={() => setIsAdding(true)}
-      className="flex items-center w-full px-3 py-2.5 text-sm text-gray-400 hover:text-purple-600 hover:bg-purple-50/50 border-b border-gray-100 transition-colors group"
-      style={{ minWidth: totalWidth }}
+      onClick={() => setAdding(true)}
+      className="flex items-center w-full px-3 py-2 text-sm text-gray-400 hover:text-purple-600 hover:bg-purple-50/30 border-b border-gray-100 transition-colors group/add"
+      style={{ minWidth: totalW }}
     >
-      <div className="w-10 flex items-center justify-center">
-        <Plus className="h-4 w-4 group-hover:text-purple-600 transition-colors" />
-      </div>
-      <span className="group-hover:text-purple-600 transition-colors">Add task...</span>
+      <div className="w-[60px] flex items-center justify-center"><Plus className="h-4 w-4 group-hover/add:text-purple-600 transition-colors" /></div>
+      <span className="group-hover/add:text-purple-600 transition-colors">Add task...</span>
     </button>
   );
 };
 
 // ============================================================
-// MAIN TASK LIST COMPONENT
+// BULK ACTIONS BAR (ClickUp-style floating dark bar)
+// ============================================================
+
+const BulkActionsBar: React.FC<{
+  count: number;
+  onClear: () => void;
+  statuses: StatusOption[];
+  priorities: typeof CLICKUP_PRIORITIES;
+  members: AvailableUser[];
+  onBulkStatusChange: (status: StatusOption) => void;
+  onBulkPriorityChange: (priority: number | null) => void;
+  onBulkAssigneeAdd: (userId: number) => void;
+  onBulkDateChange: (timestamp: number | null) => void;
+  onBulkDelete: () => void;
+  onBulkDuplicate: () => void;
+}> = ({ count, onClear, statuses, priorities, members, onBulkStatusChange, onBulkPriorityChange, onBulkAssigneeAdd, onBulkDateChange, onBulkDelete, onBulkDuplicate }) => {
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openDropdown) return;
+    const handler = (e: MouseEvent) => { if (barRef.current && !barRef.current.contains(e.target as Node)) setOpenDropdown(null); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openDropdown]);
+
+  if (count === 0) return null;
+
+  const Btn: React.FC<{ id: string; icon: React.ReactNode; label: string; danger?: boolean; directAction?: () => void }> = ({ id, icon, label, danger, directAction }) => (
+    <button
+      onClick={() => directAction ? directAction() : setOpenDropdown(openDropdown === id ? null : id)}
+      className={cn(
+        'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+        openDropdown === id ? 'text-white bg-white/15' : '',
+        danger ? 'text-red-300 hover:text-red-200 hover:bg-red-500/20' : 'text-gray-300 hover:text-white hover:bg-white/10'
+      )}
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </button>
+  );
+
+  const Dropdown: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => {
+    if (openDropdown !== id) return null;
+    return (
+      <div className="absolute bottom-full left-0 mb-2 min-w-[180px] max-h-60 overflow-auto bg-white rounded-lg shadow-xl border border-gray-200 py-1 text-gray-900 z-[60]">
+        {children}
+      </div>
+    );
+  };
+
+  return (
+    <div ref={barRef} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-gray-900 text-white rounded-xl shadow-2xl px-4 py-2 border border-gray-700/50">
+      <div className="flex items-center gap-2 pr-3 border-r border-gray-700">
+        <div className="w-5 h-5 rounded bg-purple-600 flex items-center justify-center">
+          <Check className="h-3 w-3 text-white" strokeWidth={3} />
+        </div>
+        <span className="text-sm font-semibold whitespace-nowrap">{count} Task{count !== 1 ? 's' : ''} selected</span>
+        <button onClick={onClear} className="p-0.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Status */}
+      <div className="relative">
+        <Btn id="status" icon={<CircleDot className="h-4 w-4" />} label="Status" />
+        <Dropdown id="status">
+          {statuses.map((s) => (
+            <button key={String(s.id ?? s.status)} onClick={() => { onBulkStatusChange(s); setOpenDropdown(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+              <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color || '#87909e' }} />
+              <span className="capitalize">{s.status}</span>
+            </button>
+          ))}
+          {statuses.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">No statuses loaded</div>}
+        </Dropdown>
+      </div>
+
+      {/* Assignee */}
+      <div className="relative">
+        <Btn id="assignee" icon={<Users className="h-4 w-4" />} label="Assignee" />
+        <Dropdown id="assignee">
+          {members.map((m) => (
+            <button key={String(m.id)} onClick={() => { onBulkAssigneeAdd(Number(m.id)); setOpenDropdown(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+              {m.profilePicture ? (
+                <img src={m.profilePicture} className="w-5 h-5 rounded-full" alt="" />
+              ) : (
+                <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-[10px] font-bold text-white">{(m.username || m.email || '?')[0].toUpperCase()}</div>
+              )}
+              <span>{m.username || m.email}</span>
+            </button>
+          ))}
+          {members.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">No members loaded</div>}
+        </Dropdown>
+      </div>
+
+      {/* Date */}
+      <div className="relative">
+        <Btn id="date" icon={<Calendar className="h-4 w-4" />} label="Date" />
+        <Dropdown id="date">
+          <div className="px-3 py-2">
+            <input
+              type="date"
+              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+              onChange={(e) => {
+                if (e.target.value) { onBulkDateChange(new Date(e.target.value).getTime()); setOpenDropdown(null); }
+              }}
+            />
+          </div>
+          <button onClick={() => { onBulkDateChange(null); setOpenDropdown(null); }} className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-gray-50">Clear date</button>
+        </Dropdown>
+      </div>
+
+      {/* Priority */}
+      <div className="relative">
+        <Btn id="priority" icon={<Flag className="h-4 w-4" />} label="Priority" />
+        <Dropdown id="priority">
+          {priorities.map((p) => (
+            <button key={p.id || 'none'} onClick={() => { onBulkPriorityChange(p.id ? Number(p.id) : null); setOpenDropdown(null); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+              <Flag className="w-4 h-4" style={{ color: p.color }} />
+              <span className="capitalize">{p.priority === 'none' ? 'No priority' : p.priority}</span>
+            </button>
+          ))}
+        </Dropdown>
+      </div>
+
+      <div className="w-px h-6 bg-gray-700 mx-1" />
+
+      <Btn id="duplicate" icon={<Copy className="h-4 w-4" />} label="Duplicate" directAction={onBulkDuplicate} />
+      <Btn id="delete" icon={<Trash2 className="h-4 w-4" />} label="Delete" directAction={onBulkDelete} danger />
+    </div>
+  );
+};
+
+// ============================================================
+// MAIN TASK LIST
 // ============================================================
 
 export const TaskList: React.FC<TaskListProps> = ({
   tasks: initialTasks,
   isLoading = false,
-  listId,
-  workspaceId,
-  listName = 'Tasks',
+  listId: propListId,
+  workspaceId: propWorkspaceId,
+  listName: propListName,
   listColor = '#5B4FD1',
   onTaskClick,
   onTaskSelect,
   onAddTask,
   onTaskUpdate,
   onTimerToggle,
-  selectedTasks = [],
+  selectedTasks: externalSelected,
   groupBy = 'status',
   onGroupByChange,
   className,
 }) => {
   const { columns, updateColumns } = useColumns(defaultColumns);
   const { openTaskModal } = useTaskStore();
+  const { currentList, currentWorkspace, currentSpace } = useWorkspaceStore();
 
-  // LOCAL TASKS STATE for optimistic updates
+  // Auto-resolve IDs from workspace store if not provided as props
+  const listId = propListId || currentList?.id;
+  const workspaceId = propWorkspaceId || currentWorkspace?.id;
+  const spaceId = currentSpace?.id;
+  const listName = propListName || currentList?.name || 'Tasks';
+
+  // Local task state for optimistic updates
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  
-  // Sync with parent tasks when they change
-  useEffect(() => {
-    setTasks(initialTasks);
-  }, [initialTasks]);
+  useEffect(() => { setTasks(initialTasks); }, [initialTasks]);
 
-  // Handle task click - open detail modal
-  const handleTaskClick = useCallback((task: Task) => {
-    // Use store to open modal
-    openTaskModal(task);
-    // Also call prop if provided
-    onTaskClick?.(task);
-  }, [openTaskModal, onTaskClick]);
+  // Selection state (internal or external)
+  const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
+  const selectedSet = externalSelected ? new Set(externalSelected) : internalSelected;
 
+  const handleSelect = useCallback((taskId: string, selected: boolean) => {
+    if (onTaskSelect) { onTaskSelect(taskId, selected); return; }
+    setInternalSelected((prev) => {
+      const next = new Set(prev);
+      selected ? next.add(taskId) : next.delete(taskId);
+      return next;
+    });
+  }, [onTaskSelect]);
+
+  const handleSelectAll = useCallback((selected: boolean) => {
+    if (selected) {
+      const allIds = new Set(tasks.map((t) => t.id));
+      setInternalSelected(allIds);
+    } else {
+      setInternalSelected(new Set());
+    }
+  }, [tasks]);
+
+  const clearSelection = useCallback(() => setInternalSelected(new Set()), []);
+
+  // UI state
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -701,762 +586,390 @@ export const TaskList: React.FC<TaskListProps> = ({
   const [showSearch, setShowSearch] = useState(false);
   const [showHidePanel, setShowHidePanel] = useState(false);
 
-  // Metadata for inline editing
+  // Metadata
   const [statuses, setStatuses] = useState<StatusOption[]>([]);
   const [members, setMembers] = useState<AvailableUser[]>([]);
+  const [spaceTags, setSpaceTags] = useState<{ name: string; tag_bg?: string; tag_fg?: string }[]>([]);
+  const [accountabilityMap, setAccountabilityMap] = useState<Record<string, any>>({});
   const [updatingTasks, setUpdatingTasks] = useState<Set<string>>(new Set());
   const [loadingMetadata, setLoadingMetadata] = useState(false);
 
-  // Timer state
-  const [runningTimer, setRunningTimer] = useState<{
-    taskId: string;
-    startTime: number;
-  } | null>(null);
+  // Timer
+  const [runningTimer, setRunningTimer] = useState<{ taskId: string; startTime: number } | null>(null);
   const [timerElapsed, setTimerElapsed] = useState(0);
 
-  // Update timer elapsed every second when running
   useEffect(() => {
-    if (!runningTimer) {
-      setTimerElapsed(0);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setTimerElapsed(Date.now() - runningTimer.startTime);
-    }, 1000);
-
+    if (!runningTimer) { setTimerElapsed(0); return; }
+    const interval = setInterval(() => setTimerElapsed(Date.now() - runningTimer.startTime), 1000);
     return () => clearInterval(interval);
   }, [runningTimer]);
 
-  // Check for running timer on mount
-  useEffect(() => {
-    const checkRunningTimer = async () => {
-      if (!workspaceId) return;
-      
-      try {
-        const timer = await api.getRunningTimer(workspaceId);
-        if (timer?.data?.task?.id) {
-          setRunningTimer({
-            taskId: timer.data.task.id,
-            startTime: parseInt(timer.data.start) || Date.now(),
-          });
-        }
-      } catch (error) {
-        // No running timer or error - that's fine
-      }
-    };
-    
-    checkRunningTimer();
-  }, [workspaceId]);
-
-  // Fetch statuses when listId changes
-  useEffect(() => {
-    const fetchStatuses = async () => {
-      if (!listId) return;
-      
-      try {
-        const fetchedStatuses = await api.getListStatuses(listId);
-        setStatuses(fetchedStatuses);
-      } catch (error) {
-        console.error('Failed to fetch statuses:', error);
-      }
-    };
-
-    fetchStatuses();
-  }, [listId]);
-
-  // Fetch members when workspaceId changes
+  // Check running timer on mount
   useEffect(() => {
     if (!workspaceId) return;
-    
-    let isCancelled = false;
-    
-    const fetchMembers = async () => {
-      setLoadingMetadata(true);
-      
-      try {
-        const fetchedMembers = await api.getMembers(workspaceId);
-        
-        if (isCancelled) return;
-        
-        if (fetchedMembers && fetchedMembers.length > 0) {
-          setMembers(fetchedMembers);
-        } else {
-          setMembers([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch members:', error);
-        if (!isCancelled) {
-          setMembers([]);
-        }
-      } finally {
-        if (!isCancelled) {
-          setLoadingMetadata(false);
-        }
-      }
-    };
-
-    fetchMembers();
-    
-    return () => {
-      isCancelled = true;
-    };
+    api.getRunningTimer(workspaceId).then((timer) => {
+      if (timer?.data?.task?.id) setRunningTimer({ taskId: timer.data.task.id, startTime: parseInt(timer.data.start) || Date.now() });
+    }).catch(() => {});
   }, [workspaceId]);
 
-  // FALLBACK: If we have tasks but no members, try to get workspaceId from localStorage
+  // Fetch statuses
   useEffect(() => {
-    const fetchMembersFallback = async () => {
-      if (members.length > 0) return;
-      if (tasks.length === 0) return;
-      if (workspaceId) return;
-      
+    if (!listId) return;
+    api.getListStatuses(listId).then(setStatuses).catch(console.error);
+  }, [listId]);
+
+  // Fetch members
+  useEffect(() => {
+    if (!workspaceId) return;
+    let cancelled = false;
+    setLoadingMetadata(true);
+    api.getMembers(workspaceId).then((m) => { if (!cancelled) setMembers(m || []); }).catch(() => { if (!cancelled) setMembers([]); }).finally(() => { if (!cancelled) setLoadingMetadata(false); });
+    return () => { cancelled = true; };
+  }, [workspaceId]);
+
+  // Fallback: get workspace from localStorage if not provided
+  useEffect(() => {
+    if (members.length > 0 || tasks.length === 0 || workspaceId) return;
+    const t = setTimeout(async () => {
       try {
         const stored = localStorage.getItem('workora-workspace');
         if (stored) {
-          const parsed = JSON.parse(stored);
-          const storedWorkspaceId = parsed?.state?.currentWorkspace?.id;
-          
-          if (storedWorkspaceId) {
-            const fetchedMembers = await api.getMembers(storedWorkspaceId);
-            if (fetchedMembers && fetchedMembers.length > 0) {
-              setMembers(fetchedMembers);
-            }
-          }
+          const wsId = JSON.parse(stored)?.state?.currentWorkspace?.id;
+          if (wsId) { const m = await api.getMembers(wsId); if (m?.length) setMembers(m); }
         }
-      } catch (error) {
-        console.error('Fallback members fetch failed:', error);
-      }
-    };
-    
-    const timer = setTimeout(fetchMembersFallback, 500);
-    return () => clearTimeout(timer);
+      } catch {}
+    }, 500);
+    return () => clearTimeout(t);
   }, [tasks.length, members.length, workspaceId]);
 
+  // Fetch space tags
+  useEffect(() => {
+    if (!spaceId) return;
+    let cancelled = false;
+    api.getSpaceTags(spaceId).then((tags) => { if (!cancelled && tags) setSpaceTags(tags); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [spaceId]);
+
+  // Fetch accountability/ETA data for all tasks
+  const taskIds = useMemo(() => tasks.map((t) => t.id).join(','), [tasks]);
+  useEffect(() => {
+    if (!tasks.length) return;
+    let cancelled = false;
+    const fetchAccountability = async () => {
+      const map: Record<string, any> = {};
+      // Fetch in parallel with concurrency limit
+      const batchSize = 5;
+      for (let i = 0; i < tasks.length; i += batchSize) {
+        const batch = tasks.slice(i, i + batchSize);
+        const results = await Promise.allSettled(batch.map((t) => api.getTaskAccountability(t.id)));
+        results.forEach((r, idx) => {
+          if (r.status === 'fulfilled' && r.value) map[batch[idx].id] = r.value;
+        });
+      }
+      if (!cancelled) setAccountabilityMap(map);
+    };
+    fetchAccountability().catch(() => {});
+    return () => { cancelled = true; };
+  }, [taskIds]);
+
   // ============================================================
-  // API UPDATE HANDLERS WITH OPTIMISTIC UPDATES
+  // API HANDLERS (optimistic updates)
   // ============================================================
+
+  const markUpdating = (id: string) => setUpdatingTasks((p) => new Set(p).add(id));
+  const clearUpdating = (id: string) => setUpdatingTasks((p) => { const n = new Set(p); n.delete(id); return n; });
+
+  const handleTaskClick = useCallback((task: Task) => { openTaskModal(task); onTaskClick?.(task); }, [openTaskModal, onTaskClick]);
 
   const handleStatusChange = useCallback(async (taskId: string, status: StatusOption) => {
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-
-    // Store previous state for rollback
-    const previousTasks = [...tasks];
-
-    // OPTIMISTIC UPDATE - update local state immediately
-    setTasks(prev => prev.map(t => 
-      t.id === taskId 
-        ? { 
-            ...t, 
-            status: { 
-              ...t.status, 
-              id: String(status.id || ''),
-              status: status.status || '', 
-              color: status.color || '#gray',
-              type: status.type
-            } 
-          } 
-        : t
-    ));
-
-    try {
-      await api.updateTask(taskId, { status: status.status });
-    } catch (error) {
-      console.error('Failed to update status:', error);
-      setTasks(previousTasks);
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+    markUpdating(taskId);
+    const prev = [...tasks];
+    setTasks((t) => t.map((x) => x.id === taskId ? { ...x, status: { ...x.status, id: String(status.id || ''), status: status.status || '', color: status.color || '#87909e', type: status.type } } as Task : x));
+    try { await api.updateTask(taskId, { status: status.status }); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
   }, [tasks]);
 
   const handlePriorityChange = useCallback(async (taskId: string, priority: number | null) => {
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-
-    const previousTasks = [...tasks];
-
-    // OPTIMISTIC UPDATE - using ClickUp colors
-    const priorityMap: Record<number, { id: string; priority: string; color: string }> = {
-      1: { id: '1', priority: 'urgent', color: '#F42A2A' },
-      2: { id: '2', priority: 'high', color: '#FFCC00' },
-      3: { id: '3', priority: 'normal', color: '#6B7AFF' },
-      4: { id: '4', priority: 'low', color: '#808080' },
-    };
-    
-    setTasks(prev => prev.map(t => 
-      t.id === taskId 
-        ? { ...t, priority: priority ? priorityMap[priority] : undefined } 
-        : t
-    ));
-
-    try {
-      await api.updateTask(taskId, { priority });
-    } catch (error) {
-      console.error('Failed to update priority:', error);
-      setTasks(previousTasks);
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+    markUpdating(taskId);
+    const prev = [...tasks];
+    const pMap: Record<number, { id: string; priority: string; color: string }> = { 1: { id: '1', priority: 'urgent', color: '#F42A2A' }, 2: { id: '2', priority: 'high', color: '#FFCC00' }, 3: { id: '3', priority: 'normal', color: '#6B7AFF' }, 4: { id: '4', priority: 'low', color: '#808080' } };
+    setTasks((t) => t.map((x) => x.id === taskId ? { ...x, priority: priority ? pMap[priority] : undefined } as Task : x));
+    try { await api.updateTask(taskId, { priority }); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
   }, [tasks]);
 
   const handleDueDateChange = useCallback(async (taskId: string, timestamp: number | null) => {
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-
-    const previousTasks = [...tasks];
-
-    // OPTIMISTIC UPDATE
-    setTasks(prev => prev.map(t => 
-      t.id === taskId 
-        ? { ...t, due_date: timestamp ? String(timestamp) : undefined } 
-        : t
-    ));
-
-    try {
-      await api.updateTask(taskId, { due_date: timestamp });
-    } catch (error) {
-      console.error('Failed to update due date:', error);
-      setTasks(previousTasks);
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+    markUpdating(taskId);
+    const prev = [...tasks];
+    setTasks((t) => t.map((x) => x.id === taskId ? { ...x, due_date: timestamp ? String(timestamp) : undefined } as Task : x));
+    try { await api.updateTask(taskId, { due_date: timestamp }); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
   }, [tasks]);
 
   const handleAssigneesChange = useCallback(async (taskId: string, action: { add?: number[]; rem?: number[] }) => {
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-
-    const previousTasks = [...tasks];
-
-    // OPTIMISTIC UPDATE
-    setTasks(prev => prev.map(t => {
-      if (t.id !== taskId) return t;
-      
-      let newAssignees = [...(t.assignees || [])];
-      
-      if (action.add) {
-        action.add.forEach(userId => {
-          const user = members.find(m => Number(m.id) === userId);
-          if (user && !newAssignees.some(a => Number(a.id) === userId)) {
-            newAssignees.push({
-              id: userId,
-              username: user.username || '',
-              email: user.email || '',
-              profilePicture: user.profilePicture,
-            });
-          }
-        });
-      }
-      
-      if (action.rem) {
-        newAssignees = newAssignees.filter(a => !action.rem?.includes(Number(a.id)));
-      }
-      
-      return { ...t, assignees: newAssignees };
+    markUpdating(taskId);
+    const prev = [...tasks];
+    setTasks((t) => t.map((x) => {
+      if (x.id !== taskId) return x;
+      let a = [...(x.assignees || [])];
+      action.add?.forEach((uid) => { const u = members.find((m) => Number(m.id) === uid); if (u && !a.some((aa) => Number(aa.id) === uid)) a.push({ id: uid, username: u.username || '', email: u.email || '', profilePicture: u.profilePicture }); });
+      if (action.rem) a = a.filter((aa) => !action.rem?.includes(Number(aa.id)));
+      return { ...x, assignees: a } as Task;
     }));
-
-    try {
-      await api.updateAssignees(taskId, action);
-    } catch (error) {
-      console.error('Failed to update assignees:', error);
-      setTasks(previousTasks);
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+    try { await api.updateAssignees(taskId, action); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
   }, [tasks, members]);
 
-  // Handle task name change
   const handleNameChange = useCallback(async (taskId: string, name: string) => {
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-    const previousTasks = [...tasks];
-
-    // OPTIMISTIC UPDATE
-    setTasks(prev => prev.map(t => 
-      t.id === taskId ? { ...t, name } : t
-    ));
-
-    try {
-      await api.updateTask(taskId, { name });
-    } catch (error) {
-      console.error('Failed to update task name:', error);
-      setTasks(previousTasks);
-      throw error; // Re-throw so the UI knows it failed
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+    markUpdating(taskId);
+    const prev = [...tasks];
+    setTasks((t) => t.map((x) => x.id === taskId ? { ...x, name } as Task : x));
+    try { await api.updateTask(taskId, { name }); } catch { setTasks(prev); throw new Error('Failed'); } finally { clearUpdating(taskId); }
   }, [tasks]);
 
-  // Handle quick add task
   const handleQuickAdd = useCallback(async (name: string) => {
-    if (!listId) {
-      console.error('Cannot create task without listId');
-      return;
-    }
-
-    try {
-      const newTask = await api.createTask({ listId, name });
-      
-      // Add to local state
-      setTasks(prev => [...prev, newTask]);
-      
-      // Optionally refresh from server to get full task data
-      onTaskUpdate?.();
-    } catch (error) {
-      console.error('Failed to create task:', error);
-      throw error;
-    }
+    if (!listId) return;
+    const newTask = await api.createTask({ listId, name });
+    setTasks((t) => [...t, newTask]);
+    onTaskUpdate?.();
   }, [listId, onTaskUpdate]);
 
-  // Get workspaceId from storage if not provided
   const getWorkspaceId = useCallback(() => {
     if (workspaceId) return workspaceId;
-    
-    try {
-      const stored = localStorage.getItem('workora-workspace');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return parsed?.state?.currentWorkspace?.id;
-      }
-    } catch {
-      return null;
-    }
-    return null;
+    try { const s = localStorage.getItem('workora-workspace'); return s ? JSON.parse(s)?.state?.currentWorkspace?.id : null; } catch { return null; }
   }, [workspaceId]);
 
-  // Handle timer start
   const handleTimerStart = useCallback(async (taskId: string) => {
-    const wsId = getWorkspaceId();
-    if (!wsId) {
-      console.error('Cannot start timer without workspaceId');
-      return;
-    }
-
-    try {
-      // Stop any running timer first
-      if (runningTimer) {
-        await api.stopTimer(wsId);
-      }
-      
-      // Start new timer
-      const result = await api.startTimer(wsId, taskId);
-      
-      setRunningTimer({
-        taskId,
-        startTime: parseInt(result.start) || Date.now(),
-      });
-      setTimerElapsed(0);
-    } catch (error) {
-      console.error('Failed to start timer:', error);
-      throw error;
-    }
+    const wsId = getWorkspaceId(); if (!wsId) return;
+    if (runningTimer) await api.stopTimer(wsId);
+    const r = await api.startTimer(wsId, taskId);
+    setRunningTimer({ taskId, startTime: parseInt(r.start) || Date.now() }); setTimerElapsed(0);
   }, [getWorkspaceId, runningTimer]);
 
-  // Handle timer stop
   const handleTimerStop = useCallback(async (taskId: string) => {
-    const wsId = getWorkspaceId();
-    if (!wsId) {
-      console.error('Cannot stop timer without workspaceId');
-      return;
-    }
-
-    try {
-      await api.stopTimer(wsId);
-      
-      // Update local task with new time spent
-      const elapsed = timerElapsed;
-      setTasks(prev => prev.map(t => 
-        t.id === taskId 
-          ? { ...t, time_spent: (t.time_spent || 0) + elapsed }
-          : t
-      ));
-      
-      setRunningTimer(null);
-      setTimerElapsed(0);
-      
-      // Refresh to get updated time data
-      onTaskUpdate?.();
-    } catch (error) {
-      console.error('Failed to stop timer:', error);
-      throw error;
-    }
+    const wsId = getWorkspaceId(); if (!wsId) return;
+    await api.stopTimer(wsId);
+    const el = timerElapsed;
+    setTasks((t) => t.map((x) => x.id === taskId ? { ...x, time_spent: (x.time_spent || 0) + el } as Task : x));
+    setRunningTimer(null); setTimerElapsed(0); onTaskUpdate?.();
   }, [getWorkspaceId, timerElapsed, onTaskUpdate]);
 
-  // ============================================================
-  // NEW HANDLERS: Complete, Delete, Duplicate, Archive
-  // ============================================================
-
-  // Handle task completion (toggle complete/reopen)
   const handleComplete = useCallback(async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const isCompleted = ['closed', 'complete', 'done', 'completed'].includes(
-      task.status?.status?.toLowerCase() || ''
-    );
-
-    // Find the appropriate status to switch to
-    const newStatus = isCompleted
-      ? statuses.find(s => 
-          s.status?.toLowerCase() === 'to do' || 
-          s.status?.toLowerCase() === 'open' || 
-          s.type === 'open'
-        )
-      : statuses.find(s => 
-          s.status?.toLowerCase() === 'complete' || 
-          s.status?.toLowerCase() === 'done' ||
-          s.status?.toLowerCase() === 'closed' ||
-          s.type === 'closed'
-        );
-
-    if (newStatus) {
-      await handleStatusChange(taskId, newStatus);
-    } else {
-      console.warn('Could not find appropriate status to toggle completion');
-    }
+    const task = tasks.find((t) => t.id === taskId); if (!task) return;
+    const isDone = ['closed', 'complete', 'done', 'completed'].includes(task.status?.status?.toLowerCase() || '');
+    const ns = isDone
+      ? statuses.find((s) => s.status?.toLowerCase() === 'to do' || s.status?.toLowerCase() === 'open' || s.type === 'open')
+      : statuses.find((s) => s.status?.toLowerCase() === 'complete' || s.status?.toLowerCase() === 'done' || s.status?.toLowerCase() === 'closed' || s.type === 'closed');
+    if (ns) await handleStatusChange(taskId, ns);
   }, [tasks, statuses, handleStatusChange]);
 
-  // Handle task deletion
   const handleDelete = useCallback(async (taskId: string) => {
-    // Show confirmation dialog
-    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
-      return;
-    }
-
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-    const previousTasks = [...tasks];
-
-    // OPTIMISTIC UPDATE - remove from local state immediately
-    setTasks(prev => prev.filter(t => t.id !== taskId));
-
-    try {
-      await api.deleteTask(taskId);
-      onTaskUpdate?.();
-    } catch (error) {
-      console.error('Failed to delete task:', error);
-      // Rollback on error
-      setTasks(previousTasks);
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+    if (!confirm('Delete this task? This cannot be undone.')) return;
+    markUpdating(taskId);
+    const prev = [...tasks];
+    setTasks((t) => t.filter((x) => x.id !== taskId));
+    try { await api.deleteTask(taskId); onTaskUpdate?.(); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
   }, [tasks, onTaskUpdate]);
 
-  // Handle task duplication
   const handleDuplicate = useCallback(async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task || !listId) {
-      console.error('Cannot duplicate task without task data or listId');
-      return;
-    }
-
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-
+    const task = tasks.find((t) => t.id === taskId); if (!task || !listId) return;
+    markUpdating(taskId);
     try {
-      // Create a new task with copied data
-      const newTask = await api.createTask({
-  listId,
-  name: `${task.name} (copy)`,
-  description: task.description,
-  priority: task.priority?.id ? Number(task.priority.id) : undefined,
-  dueDate: task.due_date ? String(task.due_date) : undefined,
-});
-
-      // Add to local state
-      setTasks(prev => [...prev, newTask]);
-      
-      // Refresh to get complete task data
-      onTaskUpdate?.();
-    } catch (error) {
-      console.error('Failed to duplicate task:', error);
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+      const n = await api.createTask({ listId, name: `${task.name} (copy)`, description: task.description, priority: task.priority?.id ? Number(task.priority.id) : undefined, dueDate: task.due_date ? String(task.due_date) : undefined });
+      setTasks((t) => [...t, n]); onTaskUpdate?.();
+    } catch {} finally { clearUpdating(taskId); }
   }, [tasks, listId, onTaskUpdate]);
 
-  // Handle task archive
   const handleArchive = useCallback(async (taskId: string) => {
-    setUpdatingTasks(prev => new Set(prev).add(taskId));
-    const previousTasks = [...tasks];
-
-    // OPTIMISTIC UPDATE - remove from view (archived tasks typically hidden)
-    setTasks(prev => prev.filter(t => t.id !== taskId));
-
-    try {
-      await api.updateTask(taskId, { archived: true });
-      onTaskUpdate?.();
-    } catch (error) {
-      console.error('Failed to archive task:', error);
-      // Rollback on error
-      setTasks(previousTasks);
-    } finally {
-      setUpdatingTasks(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
-      });
-    }
+    markUpdating(taskId);
+    const prev = [...tasks];
+    setTasks((t) => t.filter((x) => x.id !== taskId));
+    try { await api.updateTask(taskId, { archived: true }); onTaskUpdate?.(); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
   }, [tasks, onTaskUpdate]);
 
-  // ============================================================
-  // LOCAL STATE HANDLERS
-  // ============================================================
+  // Tag handlers
+  const handleAddTag = useCallback(async (taskId: string, tagName: string) => {
+    markUpdating(taskId);
+    const prev = [...tasks];
+    const tag = spaceTags.find((t) => t.name === tagName) || { name: tagName };
+    setTasks((t) => t.map((x) => x.id === taskId ? { ...x, tags: [...(x.tags || []), tag] } as Task : x));
+    try { await api.addTaskTag(taskId, tagName); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
+  }, [tasks, spaceTags]);
 
-  const handleSort = useCallback((columnId: string, direction: 'asc' | 'desc') => {
-    setSortBy(columnId);
-    setSortDirection(direction);
-  }, []);
+  const handleRemoveTag = useCallback(async (taskId: string, tagName: string) => {
+    markUpdating(taskId);
+    const prev = [...tasks];
+    setTasks((t) => t.map((x) => x.id === taskId ? { ...x, tags: (x.tags || []).filter((tg: any) => tg.name !== tagName) } as Task : x));
+    try { await api.removeTaskTag(taskId, tagName); } catch { setTasks(prev); } finally { clearUpdating(taskId); }
+  }, [tasks]);
 
-  const toggleGroup = useCallback((groupId: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupId)) {
-        next.delete(groupId);
-      } else {
-        next.add(groupId);
-      }
-      return next;
-    });
-  }, []);
+  // Generic update handler for remaining fields (tags, etc.)
+  const handleGenericUpdate = useCallback(async (taskId: string, field: string, value: any) => {
+    if (field === 'addTag') { await handleAddTag(taskId, value); return; }
+    if (field === 'removeTag') { await handleRemoveTag(taskId, value); return; }
+    // Fallback: direct API update
+    markUpdating(taskId);
+    try { await api.updateTask(taskId, { [field]: value }); onTaskUpdate?.(); } catch {} finally { clearUpdating(taskId); }
+  }, [handleAddTag, handleRemoveTag, onTaskUpdate]);
 
-  const handleGroupByChange = useCallback(
-    (newGroupBy: 'status' | 'priority' | 'assignee' | 'none') => {
-      setInternalGroupBy(newGroupBy);
-      onGroupByChange?.(newGroupBy);
-    },
-    [onGroupByChange]
-  );
+  // Bulk handlers
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedSet);
+    if (!ids.length || !confirm(`Delete ${ids.length} task${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    const prev = [...tasks];
+    setTasks((t) => t.filter((x) => !selectedSet.has(x.id)));
+    clearSelection();
+    try { await Promise.all(ids.map((id) => api.deleteTask(id))); onTaskUpdate?.(); } catch { setTasks(prev); }
+  }, [tasks, selectedSet, clearSelection, onTaskUpdate]);
 
-  const handleToggleColumn = useCallback(
-    (columnId: string) => {
-      const newColumns = columns.map((col) =>
-        col.id === columnId ? { ...col, visible: !col.visible } : col
-      );
-      updateColumns(newColumns);
-    },
-    [columns, updateColumns]
-  );
+  const handleBulkDuplicate = useCallback(async () => {
+    const ids = Array.from(selectedSet);
+    if (!ids.length || !listId) return;
+    for (const id of ids) { await handleDuplicate(id); }
+    clearSelection();
+  }, [selectedSet, listId, handleDuplicate, clearSelection]);
+
+  const handleBulkStatusChange = useCallback(async (status: StatusOption) => {
+    const ids = Array.from(selectedSet);
+    if (!ids.length) return;
+    for (const id of ids) { await handleStatusChange(id, status); }
+    clearSelection();
+  }, [selectedSet, handleStatusChange, clearSelection]);
+
+  const handleBulkPriorityChange = useCallback(async (priority: number | null) => {
+    const ids = Array.from(selectedSet);
+    if (!ids.length) return;
+    for (const id of ids) { await handlePriorityChange(id, priority); }
+    clearSelection();
+  }, [selectedSet, handlePriorityChange, clearSelection]);
+
+  const handleBulkAssigneeAdd = useCallback(async (userId: number) => {
+    const ids = Array.from(selectedSet);
+    if (!ids.length) return;
+    for (const id of ids) { await handleAssigneesChange(id, { add: [userId] }); }
+    clearSelection();
+  }, [selectedSet, handleAssigneesChange, clearSelection]);
+
+  const handleBulkDateChange = useCallback(async (timestamp: number | null) => {
+    const ids = Array.from(selectedSet);
+    if (!ids.length) return;
+    for (const id of ids) { await handleDueDateChange(id, timestamp); }
+    clearSelection();
+  }, [selectedSet, handleDueDateChange, clearSelection]);
+
+  // Sort / filter / group
+  const handleSort = useCallback((col: string, dir: 'asc' | 'desc') => { setSortBy(col); setSortDirection(dir); }, []);
+  const toggleGroup = useCallback((id: string) => { setCollapsedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }); }, []);
+  const handleGroupByChange = useCallback((g: 'status' | 'priority' | 'assignee' | 'none') => { setInternalGroupBy(g); onGroupByChange?.(g); }, [onGroupByChange]);
+  const handleToggleColumn = useCallback((id: string) => { updateColumns(columns.map((c) => c.id === id && !c.fixed ? { ...c, visible: !c.visible } : c)); }, [columns, updateColumns]);
 
   const filteredTasks = useMemo(() => {
-    let result = tasks;
-
-    // Filter by search
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (task) =>
-          task.name.toLowerCase().includes(query) ||
-          task.description?.toLowerCase().includes(query)
-      );
-    }
-
-    // Filter closed tasks
-    if (!showClosed) {
-      result = result.filter((task) => {
-        const status = task.status?.status?.toLowerCase() || '';
-        return !['closed', 'complete', 'done', 'completed'].includes(status);
-      });
-    }
-
-    return result;
+    let r = tasks;
+    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); r = r.filter((t) => t.name.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q)); }
+    if (!showClosed) r = r.filter((t) => !['closed', 'complete', 'done', 'completed'].includes(t.status?.status?.toLowerCase() || ''));
+    return r;
   }, [tasks, searchQuery, showClosed]);
 
   const sortedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
-      let comparison = 0;
-
+      let cmp = 0;
       switch (sortBy) {
-        case 'name':
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case 'dueDate':
-          const dateA = a.due_date ? new Date(a.due_date).getTime() : Infinity;
-          const dateB = b.due_date ? new Date(b.due_date).getTime() : Infinity;
-          comparison = dateA - dateB;
-          break;
-        case 'priority':
-          const priorityOrder: Record<string, number> = { '1': 1, '2': 2, '3': 3, '4': 4 };
-          const pA = priorityOrder[String(a.priority?.id || '4')] || 4;
-          const pB = priorityOrder[String(b.priority?.id || '4')] || 4;
-          comparison = pA - pB;
-          break;
-        case 'status':
-          comparison = (a.status?.orderindex || 0) - (b.status?.orderindex || 0);
-          break;
-        default:
-          comparison = 0;
+        case 'name': cmp = a.name.localeCompare(b.name); break;
+        case 'dueDate': cmp = (a.due_date ? new Date(a.due_date).getTime() : Infinity) - (b.due_date ? new Date(b.due_date).getTime() : Infinity); break;
+        case 'priority': { const po: Record<string, number> = { '1': 1, '2': 2, '3': 3, '4': 4 }; cmp = (po[String(a.priority?.id || '4')] || 4) - (po[String(b.priority?.id || '4')] || 4); break; }
+        case 'status': cmp = (a.status?.orderindex || 0) - (b.status?.orderindex || 0); break;
       }
-
-      return sortDirection === 'desc' ? -comparison : comparison;
+      return sortDirection === 'desc' ? -cmp : cmp;
     });
   }, [filteredTasks, sortBy, sortDirection]);
 
   const groupedTasks = useMemo((): TaskGroup[] => {
-    const currentGroupBy = internalGroupBy;
+    if (internalGroupBy === 'none') return [{ id: 'all', name: listName, color: listColor, tasks: sortedTasks }];
+    const groups = new Map<string, TaskGroup>();
+    const priorityColors: Record<string, string> = { '1': '#F42A2A', '2': '#FFCC00', '3': '#6B7AFF', '4': '#808080' };
 
-    if (currentGroupBy === 'none') {
-      return [{ id: 'all', name: listName, color: listColor, tasks: sortedTasks }];
-    }
-
-    const groups: Map<string, TaskGroup> = new Map();
-
-    sortedTasks.forEach((task) => {
-      let groupId: string = 'unknown';
-      let groupName: string = 'Unknown';
-      let groupColor: string | undefined;
-
-      switch (currentGroupBy) {
-        case 'status':
-          groupId = String(task.status?.id || 'no-status');
-          groupName = task.status?.status || 'No Status';
-          groupColor = task.status?.color;
-          break;
-        case 'priority':
-          groupId = String(task.priority?.id || 'no-priority');
-          groupName = task.priority?.priority || 'No Priority';
-          // ClickUp priority colors
-          const priorityColors: Record<string, string> = {
-            '1': '#F42A2A',
-            '2': '#FFCC00',
-            '3': '#6B7AFF',
-            '4': '#808080',
-          };
-          groupColor = priorityColors[String(task.priority?.id || '4')];
-          break;
-        case 'assignee':
-          const assignee = task.assignees?.[0];
-          groupId = String(assignee?.id || 'unassigned');
-          groupName = assignee?.username || 'Unassigned';
-          break;
-        default:
-          groupId = 'all';
-          groupName = listName;
-          groupColor = listColor;
+    sortedTasks.forEach((t) => {
+      let gid = 'unknown', gname = 'Unknown', gcolor: string | undefined;
+      switch (internalGroupBy) {
+        case 'status': gid = String(t.status?.id || 'no-status'); gname = t.status?.status || 'No Status'; gcolor = t.status?.color; break;
+        case 'priority': gid = String(t.priority?.id || 'no-priority'); gname = t.priority?.priority || 'No Priority'; gcolor = priorityColors[String(t.priority?.id || '4')]; break;
+        case 'assignee': { const a = t.assignees?.[0]; gid = String(a?.id || 'unassigned'); gname = a?.username || 'Unassigned'; break; }
       }
-
-      if (!groups.has(groupId)) {
-        groups.set(groupId, {
-          id: groupId,
-          name: groupName,
-          color: groupColor,
-          tasks: [],
-        });
-      }
-
-      groups.get(groupId)!.tasks.push(task);
+      if (!groups.has(gid)) groups.set(gid, { id: gid, name: gname, color: gcolor, tasks: [] });
+      groups.get(gid)!.tasks.push(t);
     });
-
     return Array.from(groups.values());
   }, [sortedTasks, internalGroupBy, listName, listColor]);
 
-  // Calculate filter count
-  const filterCount = useMemo(() => {
-    let count = 0;
-    if (searchQuery) count++;
-    if (showClosed) count++;
-    return count;
-  }, [searchQuery, showClosed]);
+  const filterCount = useMemo(() => { let c = 0; if (searchQuery) c++; if (showClosed) c++; return c; }, [searchQuery, showClosed]);
 
-  if (isLoading) {
-    return <SkeletonTaskList rows={8} />;
-  }
+  // Selection helpers
+  const allTaskIds = filteredTasks.map((t) => t.id);
+  const allSelected = allTaskIds.length > 0 && allTaskIds.every((id) => selectedSet.has(id));
+  const someSelected = allTaskIds.some((id) => selectedSet.has(id));
+  const selectionCount = Array.from(selectedSet).filter((id) => allTaskIds.includes(id)).length;
 
-  // Show loading indicator while fetching metadata
-  const isMetadataReady = !loadingMetadata || (statuses.length > 0 && members.length > 0);
+  if (isLoading) return <SkeletonTaskList rows={8} />;
 
   return (
-    <div className={cn('flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden', className)}>
-      {/* Metadata loading indicator */}
+    <div className={cn('flex flex-col h-full bg-white overflow-hidden', className)}>
+      {/* Metadata loading */}
       {loadingMetadata && (
-        <div className="flex items-center justify-center gap-2 py-2 bg-purple-50 border-b border-purple-100">
-          <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
-          <span className="text-sm text-purple-600">Loading statuses and members...</span>
+        <div className="flex items-center justify-center gap-2 py-1.5 bg-purple-50 border-b border-purple-100">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600" />
+          <span className="text-xs text-purple-600">Loading metadata...</span>
         </div>
       )}
-      {/* Top Toolbar - Title, View Tabs, Actions */}
+
       <TopToolbar
         listName={listName}
         onAddTask={onAddTask}
-        onSearchToggle={() => setShowSearch(!showSearch)}
         showSearch={showSearch}
-        onHideToggle={() => setShowHidePanel(!showHidePanel)}
+        onSearchToggle={() => setShowSearch(!showSearch)}
         showHidePanel={showHidePanel}
+        onHideToggle={() => setShowHidePanel(!showHidePanel)}
         currentView={currentView}
         onViewChange={setCurrentView}
       />
 
-      {/* Filter Row - Group, Subtasks, Columns | Filter, Closed, Search */}
       <FilterRow
         groupBy={internalGroupBy}
         onGroupByChange={handleGroupByChange}
-        onSearch={setSearchQuery}
         searchQuery={searchQuery}
-        filterCount={filterCount}
+        onSearch={setSearchQuery}
         showClosed={showClosed}
         onToggleClosed={() => setShowClosed(!showClosed)}
-        columns={columns}
-        onToggleColumn={handleToggleColumn}
         showSearch={showSearch}
+        filterCount={filterCount}
       />
 
-      {/* Scrollable Container */}
-      <div className="overflow-auto flex-1" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-        {/* Column Headers */}
+      {/* Scrollable list — flex-1 fills remaining height */}
+      <div className="overflow-auto flex-1">
         <TaskListHeader
           columns={columns}
           onColumnsChange={updateColumns}
           onSort={handleSort}
           sortBy={sortBy}
           sortDirection={sortDirection}
+          allSelected={allSelected}
+          someSelected={someSelected && !allSelected}
+          onSelectAll={handleSelectAll}
+          taskCount={filteredTasks.length}
         />
 
-        {/* Task Groups */}
         {groupedTasks.map((group) => (
           <div key={group.id}>
-            {/* Group Header */}
             {internalGroupBy !== 'none' && (
-              <TaskGroupHeader
-                group={group}
-                isCollapsed={collapsedGroups.has(group.id)}
-                onToggle={() => toggleGroup(group.id)}
-                onAddTask={onAddTask}
-                columns={columns}
-              />
+              <TaskGroupHeader group={group} isCollapsed={collapsedGroups.has(group.id)} onToggle={() => toggleGroup(group.id)} onAddTask={onAddTask} columns={columns} />
             )}
-
-            {/* Task Rows */}
             {!collapsedGroups.has(group.id) && (
               <>
                 {group.tasks.map((task) => (
                   <TaskRow
                     key={task.id}
                     task={task}
+                    accountability={accountabilityMap[task.id]}
                     columns={columns}
-                    isSelected={selectedTasks.includes(task.id)}
-                    onSelect={onTaskSelect}
+                    isSelected={selectedSet.has(task.id)}
+                    onSelect={handleSelect}
                     onClick={handleTaskClick}
+                    onUpdate={handleGenericUpdate}
                     onNameChange={handleNameChange}
                     onStatusChange={handleStatusChange}
                     onPriorityChange={handlePriorityChange}
@@ -1467,50 +980,52 @@ export const TaskList: React.FC<TaskListProps> = ({
                     isTimerRunning={runningTimer?.taskId === task.id}
                     timerElapsed={runningTimer?.taskId === task.id ? timerElapsed : 0}
                     availableStatuses={statuses}
+                    availablePriorities={CLICKUP_PRIORITIES}
                     availableUsers={members}
+                    availableTags={spaceTags}
                     isUpdating={updatingTasks.has(task.id)}
-                    // NEW HANDLERS
                     onComplete={handleComplete}
                     onDelete={handleDelete}
                     onDuplicate={handleDuplicate}
                     onArchive={handleArchive}
                   />
                 ))}
-
-                {/* Add Task Row - Quick inline add */}
-                <AddTaskRow 
-                  columns={columns} 
-                  onAdd={onAddTask || (() => {})} 
-                  onQuickAdd={listId ? handleQuickAdd : undefined}
-                  listId={listId}
-                />
+                <AddTaskRow columns={columns} onAdd={onAddTask || (() => {})} onQuickAdd={listId ? handleQuickAdd : undefined} />
               </>
             )}
           </div>
         ))}
 
-        {/* Empty State */}
         {filteredTasks.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <LayoutList className="w-8 h-8 text-gray-400" />
+            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+              <LayoutList className="w-7 h-7 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No tasks found</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              {searchQuery ? 'Try a different search term' : 'Create your first task to get started'}
-            </p>
+            <h3 className="text-base font-medium text-gray-900 mb-1">No tasks found</h3>
+            <p className="text-sm text-gray-500 mb-4">{searchQuery ? 'Try a different search term' : 'Create your first task to get started'}</p>
             {onAddTask && (
-              <button
-                onClick={onAddTask}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
-              >
-                <Plus className="h-4 w-4" />
-                Create Task
+              <button onClick={onAddTask} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors shadow-sm">
+                <Plus className="h-4 w-4" /> Create Task
               </button>
             )}
           </div>
         )}
       </div>
+
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        count={selectionCount}
+        onClear={clearSelection}
+        statuses={statuses}
+        priorities={CLICKUP_PRIORITIES}
+        members={members}
+        onBulkStatusChange={handleBulkStatusChange}
+        onBulkPriorityChange={handleBulkPriorityChange}
+        onBulkAssigneeAdd={handleBulkAssigneeAdd}
+        onBulkDateChange={handleBulkDateChange}
+        onBulkDelete={handleBulkDelete}
+        onBulkDuplicate={handleBulkDuplicate}
+      />
     </div>
   );
 };
