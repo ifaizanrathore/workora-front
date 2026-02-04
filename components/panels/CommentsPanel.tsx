@@ -27,21 +27,21 @@ const mockComments: Comment[] = [
   {
     id: '1',
     text: 'checking',
-    user: { id: '1', username: 'umer hammad', email: '', profilePicture: null },
+    user: { id: '1', username: 'umer hammad', email: '', profilePicture: undefined },
     resolved: false,
     assignee: { id: '2', username: 'khalil', email: '' },
-    assignedBy: { id: '1', username: 'umer', email: '' },
-    dateCreated: new Date().toISOString(),
+    assigned_by: { id: '1', username: 'umer', email: '' },
+    date_created: new Date().toISOString(),
     reactions: [],
   },
   {
     id: '2',
     text: 'checking',
-    user: { id: '1', username: 'umer hammad', email: '', profilePicture: null },
+    user: { id: '1', username: 'umer hammad', email: '', profilePicture: undefined },
     resolved: true,
     assignee: { id: '2', username: 'khalil', email: '' },
-    assignedBy: { id: '1', username: 'umer', email: '' },
-    dateCreated: new Date().toISOString(),
+    assigned_by: { id: '1', username: 'umer', email: '' },
+    date_created: new Date().toISOString(),
     reactions: [],
   },
 ];
@@ -111,9 +111,9 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onResolve }) => {
             <span className="font-medium text-text-primary">
               {comment.assignee.username}
             </span>
-            {comment.assignedBy && (
+            {comment.assigned_by && (
               <>
-                {' '}by {comment.assignedBy.username}
+                {' '}by {comment.assigned_by.username}
               </>
             )}
           </div>
@@ -129,7 +129,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onResolve }) => {
           </span>
           {comment.assignee && (
             <span className="text-sm text-primary ml-auto">
-              Assigned to {comment.assignee.username} by {comment.assignedBy?.username}
+              Assigned to {comment.assignee.username} by {comment.assigned_by?.username}
             </span>
           )}
         </div>
@@ -149,7 +149,7 @@ const CommentItem: React.FC<CommentItemProps> = ({ comment, onResolve }) => {
                 {comment.user.username}
               </span>
               <span className="text-xs text-text-tertiary">
-                {formatTimeAgo(comment.dateCreated)}
+                {formatTimeAgo(comment.date_created)}
               </span>
 
               {/* Action Icons - show on hover */}

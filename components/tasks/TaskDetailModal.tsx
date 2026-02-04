@@ -46,6 +46,7 @@ import { Task, Comment, TaskAccountability, Status } from '@/types';
 import { cn } from '@/lib/utils';
 import { useTaskStore, useWorkspaceStore } from '@/stores';
 import { api } from '@/lib/api';
+import { Avatar, AvatarGroup } from '@/components/ui/avatar';
 
 // ============================================================
 // SIMPLE TOAST NOTIFICATION (Built-in)
@@ -226,25 +227,19 @@ const formatDateShort = (date: string | number | undefined | null): string => {
   
   let d: Date;
   
-  // Handle number (timestamp)
   if (typeof date === 'number') {
     d = new Date(date);
-  } 
-  // Handle string
-  else if (typeof date === 'string') {
-    // Try parsing as timestamp first
+  } else if (typeof date === 'string') {
     const timestamp = parseInt(date, 10);
     if (!isNaN(timestamp) && timestamp > 0) {
       d = new Date(timestamp);
     } else {
-      // Try as ISO string
       d = new Date(date);
     }
   } else {
     return 'Set date';
   }
   
-  // Validate the date
   if (isNaN(d.getTime()) || d.getTime() <= 0) return 'Set date';
   
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
@@ -256,7 +251,6 @@ const formatRelativeTime = (dateString: string | number | undefined | null): str
   let date: Date;
   
   if (typeof dateString === 'number') {
-    // Validate timestamp is reasonable (after year 2000)
     if (dateString > 946684800000) {
       date = new Date(dateString);
     } else {
@@ -264,7 +258,6 @@ const formatRelativeTime = (dateString: string | number | undefined | null): str
     }
   } else {
     const timestamp = parseInt(dateString, 10);
-    // Validate timestamp is reasonable (after year 2000)
     if (!isNaN(timestamp) && timestamp > 946684800000) {
       date = new Date(timestamp);
     } else {
@@ -296,18 +289,6 @@ const getPriorityConfig = (priority: any) => {
     case '4': case 'low': return { color: '#6B7280', label: 'Low' };
     default: return { color: '#9CA3AF', label: 'None' };
   }
-};
-
-const getUserInitials = (name: string | undefined): string => {
-  if (!name) return 'U';
-  const parts = name.split(' ');
-  return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : name.substring(0, 2).toUpperCase();
-};
-
-const getAvatarColor = (name: string | undefined): string => {
-  const colors = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
-  if (!name) return colors[0];
-  return colors[name.charCodeAt(0) % colors.length];
 };
 
 // ============================================================
@@ -498,7 +479,7 @@ const PriorityDropdown: React.FC<{
 };
 
 // ============================================================
-// ASSIGNEE DROPDOWN
+// ASSIGNEE DROPDOWN (✅ FIXED: Now uses Avatar with profile pics)
 // ============================================================
 
 const AssigneeDropdown: React.FC<{
@@ -535,14 +516,13 @@ const AssigneeDropdown: React.FC<{
         ) : assignees.length > 0 ? (
           <>
             {assignees.slice(0, 3).map((a: any) => (
-              <div 
-                key={a.id} 
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold -ml-1 first:ml-0 border-2 border-white" 
-                style={{ backgroundColor: getAvatarColor(a.username || a.email) }} 
-                title={a.username || a.email}
-              >
-                {getUserInitials(a.username || a.email)}
-              </div>
+              <Avatar
+                key={a.id}
+                src={a.profilePicture}
+                name={a.username || a.email}
+                size="sm"
+                className="-ml-1 first:ml-0 ring-2 ring-white"
+              />
             ))}
             {assignees.length > 3 && (
               <div className="w-7 h-7 rounded-full bg-[#E5E7EB] flex items-center justify-center text-[10px] font-medium text-[#6B7280] -ml-1 border-2 border-white">
@@ -579,12 +559,11 @@ const AssigneeDropdown: React.FC<{
                   isAssigned && "bg-[#F3F0FF]"
                 )}
               >
-                <div 
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
-                  style={{ backgroundColor: getAvatarColor(user.username || user.email) }}
-                >
-                  {getUserInitials(user.username || user.email)}
-                </div>
+                <Avatar
+                  src={user.profilePicture}
+                  name={user.username || user.email}
+                  size="xs"
+                />
                 <span className="flex-1 truncate">{user.username || user.email}</span>
                 {isAssigned && <Check className="h-3 w-3 text-[#7C3AED]" />}
               </button>
@@ -848,7 +827,7 @@ const TagsDropdown: React.FC<{
 
 const TrackTimeDropdown: React.FC<{
   taskId: string;
-  timeTracked: number; // in milliseconds
+  timeTracked: number;
   timerRunning: boolean;
   onStartTimer: () => void;
   onStopTimer: () => void;
@@ -870,7 +849,6 @@ const TrackTimeDropdown: React.FC<{
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Timer tick
   useEffect(() => {
     if (!timerRunning) {
       setElapsed(0);
@@ -939,15 +917,11 @@ const TrackTimeDropdown: React.FC<{
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-1 bg-white border border-[#E5E7EB] rounded-lg shadow-lg py-2 min-w-[200px] z-[60]">
-          {/* Timer Control */}
           <div className="px-3 pb-2 border-b border-[#E5E7EB]">
             <div className="text-[10px] font-medium text-[#9CA3AF] uppercase mb-2">Timer</div>
             {timerRunning ? (
               <button
-                onClick={() => {
-                  onStopTimer();
-                  setIsOpen(false);
-                }}
+                onClick={() => { onStopTimer(); setIsOpen(false); }}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-[12px] font-medium hover:bg-red-100 transition-colors"
               >
                 <div className="w-3 h-3 bg-red-500 rounded-sm" />
@@ -955,10 +929,7 @@ const TrackTimeDropdown: React.FC<{
               </button>
             ) : (
               <button
-                onClick={() => {
-                  onStartTimer();
-                  setIsOpen(false);
-                }}
+                onClick={() => { onStartTimer(); setIsOpen(false); }}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg text-[12px] font-medium hover:bg-green-100 transition-colors"
               >
                 <Play className="h-3.5 w-3.5" fill="currentColor" />
@@ -967,7 +938,6 @@ const TrackTimeDropdown: React.FC<{
             )}
           </div>
 
-          {/* Manual Time Entry */}
           <div className="px-3 py-2">
             <div className="text-[10px] font-medium text-[#9CA3AF] uppercase mb-2">Add Manual Time</div>
             <div className="flex items-center gap-2">
@@ -990,16 +960,12 @@ const TrackTimeDropdown: React.FC<{
             </div>
           </div>
 
-          {/* Quick Add Buttons */}
           <div className="px-3 pt-1">
             <div className="flex gap-1">
               {[15, 30, 60].map((mins) => (
                 <button
                   key={mins}
-                  onClick={() => {
-                    onAddTime(mins);
-                    setIsOpen(false);
-                  }}
+                  onClick={() => { onAddTime(mins); setIsOpen(false); }}
                   className="flex-1 px-2 py-1 bg-[#F5F5F7] text-[#6B7280] rounded text-[10px] font-medium hover:bg-[#E5E7EB] transition-colors"
                 >
                   +{mins}m
@@ -1008,7 +974,6 @@ const TrackTimeDropdown: React.FC<{
             </div>
           </div>
 
-          {/* Total Time */}
           {totalTime > 0 && (
             <div className="px-3 pt-2 mt-2 border-t border-[#E5E7EB]">
               <div className="flex items-center justify-between text-[11px]">
@@ -1035,7 +1000,7 @@ const CommentAction: React.FC<{ icon: React.ReactNode; active?: boolean }> = ({ 
 );
 
 // ============================================================
-// ACTIVITY TAB VIEW (Only Activity - No Comments)
+// ACTIVITY TAB VIEW
 // ============================================================
 
 const ActivityTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
@@ -1064,40 +1029,27 @@ const ActivityTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
     );
   }
 
-  // Format activity value for display
   const formatActivityValue = (value: any, field?: string): string => {
     if (value === null || value === undefined) return '';
-    
-    // Handle objects
     if (typeof value === 'object') {
-      // Status object
       if (value.status) return value.status;
-      // Priority object
       if (value.priority) return value.priority;
-      // Assignee object
       if (value.username) return value.username;
       if (value.email) return value.email;
-      // Date object
       if (value.date) return formatDateShort(value.date);
-      // Generic - try to get a readable value
       if (value.name) return value.name;
       if (value.value) return String(value.value);
-      // Last resort - don't show raw JSON
       return '';
     }
-    
-    // Handle timestamps (large numbers)
     if (typeof value === 'number' && value > 1000000000000) {
       return formatDateShort(value);
     }
     if (typeof value === 'string' && /^\d{13,}$/.test(value)) {
       return formatDateShort(parseInt(value));
     }
-    
     return String(value);
   };
 
-  // Get activity description
   const getActivityDescription = (activity: ActivityItem): { text: string; badge?: string; badgeColor?: string } => {
     const field = activity.field?.toLowerCase() || '';
     const afterValue = formatActivityValue(activity.after, field);
@@ -1105,69 +1057,38 @@ const ActivityTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
     
     switch (field) {
       case 'status':
-        return { 
-          text: 'Current status:', 
-          badge: afterValue || 'to do',
-          badgeColor: '#6B7280'
-        };
+        return { text: 'Current status:', badge: afterValue || 'to do', badgeColor: '#6B7280' };
       case 'priority':
       case 'priority_set':
-        const priorityColors: Record<string, string> = {
-          'urgent': '#EF4444',
-          'high': '#F59E0B', 
-          'normal': '#3B82F6',
-          'low': '#6B7280',
-        };
+        const priorityColors: Record<string, string> = { 'urgent': '#EF4444', 'high': '#F59E0B', 'normal': '#3B82F6', 'low': '#6B7280' };
         const priorityLabel = afterValue?.toLowerCase() || 'none';
-        return { 
-          text: 'Priority:', 
-          badge: afterValue || 'None',
-          badgeColor: priorityColors[priorityLabel] || '#6B7280'
-        };
-      case 'due_date':
-      case 'due_date_set':
-        return { 
-          text: 'Due date set',
-          badge: afterValue || undefined
-        };
-      case 'start_date':
-      case 'start_date_set':
-        return { 
-          text: 'Start date set',
-          badge: afterValue || undefined
-        };
-      case 'assignee_add':
-      case 'assignees':
+        return { text: 'Priority:', badge: afterValue || 'None', badgeColor: priorityColors[priorityLabel] || '#6B7280' };
+      case 'due_date': case 'due_date_set':
+        return { text: 'Due date set', badge: afterValue || undefined };
+      case 'start_date': case 'start_date_set':
+        return { text: 'Start date set', badge: afterValue || undefined };
+      case 'assignee_add': case 'assignees':
         return { text: `Assignee added: ${afterValue}` };
       case 'assignee_rem':
         return { text: `Assignee removed: ${beforeValue}` };
       case 'name':
         return { text: `Task renamed to "${afterValue}"` };
       case 'task_creation':
-        return { 
-          text: 'Task created',
-          badge: afterValue || undefined,
-          badgeColor: '#7C3AED'
-        };
+        return { text: 'Task created', badge: afterValue || undefined, badgeColor: '#7C3AED' };
       case 'comment':
         return { text: 'Comment added' };
       case 'attachment':
         return { text: 'Attachment added' };
-      case 'tag':
-      case 'tag_added':
+      case 'tag': case 'tag_added':
         return { text: `Tag added: ${afterValue}` };
       case 'tag_removed':
         return { text: `Tag removed: ${beforeValue}` };
       default:
-        // Use description if available, otherwise construct from field
-        if (activity.description) {
-          return { text: activity.description };
-        }
+        if (activity.description) return { text: activity.description };
         return { text: field ? `${field.replace(/_/g, ' ')} updated` : 'Task updated' };
     }
   };
 
-  // Sort activities by date (newest first)
   const sortedActivities = [...activities].sort((a, b) => {
     const dateA = parseInt(a.date_created || a.date || '0') || 0;
     const dateB = parseInt(b.date_created || b.date || '0') || 0;
@@ -1187,31 +1108,22 @@ const ActivityTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
           {sortedActivities.map((activity, index) => {
             const { text, badge, badgeColor } = getActivityDescription(activity);
             const date = activity.date_created || activity.date;
-            
             return (
               <div key={activity.id || index} className="flex items-start gap-3 py-2">
-                {/* Bullet */}
                 <div className="w-2 h-2 rounded-full bg-[#7C3AED] mt-1.5 flex-shrink-0" />
-                
-                {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[12px] text-[#374151]">{text}</span>
                     {badge && (
                       <span 
                         className="px-2 py-0.5 rounded text-[10px] font-medium"
-                        style={{ 
-                          backgroundColor: badgeColor ? `${badgeColor}15` : '#F3F4F6',
-                          color: badgeColor || '#6B7280'
-                        }}
+                        style={{ backgroundColor: badgeColor ? `${badgeColor}15` : '#F3F4F6', color: badgeColor || '#6B7280' }}
                       >
                         {badge}
                       </span>
                     )}
                   </div>
                 </div>
-                
-                {/* Date */}
                 {date && formatRelativeTime(date) && (
                   <span className="text-[10px] text-[#9CA3AF] whitespace-nowrap flex-shrink-0">
                     {formatRelativeTime(date)}
@@ -1227,7 +1139,7 @@ const ActivityTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
 };
 
 // ============================================================
-// ETA TAB VIEW (With Real API)
+// ETA TAB VIEW
 // ============================================================
 
 const ETATabView: React.FC<{ taskId: string }> = ({ taskId }) => {
@@ -1311,7 +1223,6 @@ const ETATabView: React.FC<{ taskId: string }> = ({ taskId }) => {
                   {item.reason || 'Not specified'}
                 </span>
               </div>
-
               <div className="grid grid-cols-4 gap-1">
                 <div className="text-center">
                   <p className="text-[9px] text-[#8C8C9A] mb-0.5">Actual Time</p>
@@ -1342,7 +1253,6 @@ const ETATabView: React.FC<{ taskId: string }> = ({ taskId }) => {
 // TAGS TAB VIEW (Hashtag Discussion Topics from Comments)
 // ============================================================
 
-// Helper to extract comment text from various API formats (defined early for TagsTabView)
 const getCommentText = (c: ExtendedComment): string => {
   if (c.comment_text) return c.comment_text;
   if (c.text) return c.text;
@@ -1352,28 +1262,24 @@ const getCommentText = (c: ExtendedComment): string => {
   return '';
 };
 
-// Extract hashtags from text
 const extractHashtags = (text: string): string[] => {
   if (!text) return [];
   const hashtagRegex = /#(\w+)/g;
   const matches = text.match(hashtagRegex);
   if (!matches) return [];
-  
-  // Get unique lowercase hashtags without using Set spread
   const lowercaseMatches = matches.map((tag: string) => tag.toLowerCase());
   return lowercaseMatches.filter((tag: string, index: number) => lowercaseMatches.indexOf(tag) === index);
 };
 
-// Hashtag color palette
 const hashtagColors = [
-  { bg: '#EDE9FE', text: '#7C3AED' }, // Purple
-  { bg: '#DBEAFE', text: '#2563EB' }, // Blue
-  { bg: '#D1FAE5', text: '#059669' }, // Green
-  { bg: '#FEE2E2', text: '#DC2626' }, // Red
-  { bg: '#FEF3C7', text: '#D97706' }, // Yellow
-  { bg: '#FCE7F3', text: '#DB2777' }, // Pink
-  { bg: '#E0E7FF', text: '#4F46E5' }, // Indigo
-  { bg: '#CCFBF1', text: '#0D9488' }, // Teal
+  { bg: '#EDE9FE', text: '#7C3AED' },
+  { bg: '#DBEAFE', text: '#2563EB' },
+  { bg: '#D1FAE5', text: '#059669' },
+  { bg: '#FEE2E2', text: '#DC2626' },
+  { bg: '#FEF3C7', text: '#D97706' },
+  { bg: '#FCE7F3', text: '#DB2777' },
+  { bg: '#E0E7FF', text: '#4F46E5' },
+  { bg: '#CCFBF1', text: '#0D9488' },
 ];
 
 const getHashtagColor = (tag: string) => {
@@ -1381,7 +1287,6 @@ const getHashtagColor = (tag: string) => {
   return hashtagColors[index % hashtagColors.length];
 };
 
-// Quick hashtag presets
 const quickHashtags = [
   { tag: '#revision', label: 'Revision', color: '#F97316' },
   { tag: '#approved', label: 'Approved', color: '#10B981' },
@@ -1391,7 +1296,6 @@ const quickHashtags = [
   { tag: '#blocked', label: 'Blocked', color: '#F59E0B' },
 ];
 
-// Highlighted text component for rendering @mentions and #hashtags
 const HighlightedText: React.FC<{ 
   text: string; 
   activeHashtag?: string | null;
@@ -1408,13 +1312,11 @@ const HighlightedText: React.FC<{
     if (match.index > lastIndex) {
       parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
     }
-    
     if (match[1]) {
       parts.push({ type: 'mention', content: `@${match[1]}` });
     } else if (match[2]) {
       parts.push({ type: 'hashtag', content: `#${match[2]}` });
     }
-    
     lastIndex = match.index + match[0].length;
   }
   
@@ -1427,44 +1329,39 @@ const HighlightedText: React.FC<{
       {parts.map((part, i) => {
         if (part.type === 'mention') {
           return (
-            <span
-              key={i}
-              className="bg-blue-100 text-blue-600 px-1 py-0.5 rounded font-medium text-[11px]"
-            >
+            <span key={i} className="bg-blue-100 text-blue-600 px-1 py-0.5 rounded font-medium text-[11px]">
               {part.content}
             </span>
           );
         }
-        
         if (part.type === 'hashtag') {
           const isActive = activeHashtag && part.content.toLowerCase() === activeHashtag.toLowerCase();
           const colors = getHashtagColor(part.content);
           return (
             <span
               key={i}
-              className={cn(
-                "px-1 py-0.5 rounded font-medium text-[11px]",
-                isActive ? "bg-[#7C3AED] text-white" : ""
-              )}
+              className={cn("px-1 py-0.5 rounded font-medium text-[11px]", isActive ? "bg-[#7C3AED] text-white" : "")}
               style={!isActive ? { backgroundColor: colors.bg, color: colors.text } : undefined}
             >
               {part.content}
             </span>
           );
         }
-        
         return <span key={i}>{part.content}</span>;
       })}
     </span>
   );
 };
 
+// ============================================================
+// TAGS TAB VIEW (✅ FIXED: Uses Avatar)
+// ============================================================
+
 const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; description?: string; variant?: 'default' | 'destructive' }) => void }> = ({ taskId, toast }) => {
   const [comments, setComments] = useState<ExtendedComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
 
-  // Fetch comments on mount
   useEffect(() => {
     const fetchComments = async () => {
       try {
@@ -1479,40 +1376,28 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
     fetchComments();
   }, [taskId]);
 
-  // Extract hashtags from all comments with counts
   const hashtagData = useMemo(() => {
     const hashtagMap = new Map<string, { tag: string; count: number; commentIds: string[] }>();
-
     const processText = (text: string, commentId: string) => {
       const hashtags = extractHashtags(text);
       hashtags.forEach((tag: string) => {
         if (hashtagMap.has(tag)) {
           const existing = hashtagMap.get(tag)!;
           existing.count++;
-          if (!existing.commentIds.includes(commentId)) {
-            existing.commentIds.push(commentId);
-          }
+          if (!existing.commentIds.includes(commentId)) existing.commentIds.push(commentId);
         } else {
-          hashtagMap.set(tag, {
-            tag,
-            count: 1,
-            commentIds: [commentId],
-          });
+          hashtagMap.set(tag, { tag, count: 1, commentIds: [commentId] });
         }
       });
     };
-
     comments.forEach((comment: ExtendedComment) => {
-      const text = getCommentText(comment);
-      processText(text, String(comment.id));
+      processText(getCommentText(comment), String(comment.id));
     });
-
     const values: { tag: string; count: number; commentIds: string[] }[] = [];
-    hashtagMap.forEach((value: { tag: string; count: number; commentIds: string[] }) => values.push(value));
+    hashtagMap.forEach((value) => values.push(value));
     return values.sort((a, b) => b.count - a.count);
   }, [comments]);
 
-  // Filter comments by selected hashtag
   const filteredComments = useMemo(() => {
     if (!selectedHashtag) return [];
     return comments.filter((comment: ExtendedComment) => {
@@ -1533,7 +1418,6 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
     <div className="flex-1 overflow-y-auto p-4">
       <h2 className="text-[15px] font-semibold text-[#1A1A2E] mb-3">Discussion Topics</h2>
       
-      {/* Quick Hashtag Suggestions */}
       <div className="mb-4 pb-4 border-b border-[#E5E7EB]">
         <p className="text-[11px] text-[#9CA3AF] uppercase font-medium mb-2">Quick Tags</p>
         <div className="flex flex-wrap gap-1.5">
@@ -1548,17 +1432,13 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
                   : "bg-white border-[#E5E7EB] text-[#374151] hover:border-[#7C3AED] hover:text-[#7C3AED]"
               )}
             >
-              <div 
-                className="w-2 h-2 rounded-full" 
-                style={{ backgroundColor: item.color }}
-              />
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
               {item.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Hashtags from Comments */}
       {hashtagData.length > 0 ? (
         <div className="space-y-4">
           <div>
@@ -1569,27 +1449,22 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
               {hashtagData.map((data) => {
                 const colors = getHashtagColor(data.tag);
                 const isSelected = selectedHashtag === data.tag;
-
                 return (
                   <button
                     key={data.tag}
                     onClick={() => setSelectedHashtag(isSelected ? null : data.tag)}
                     className={cn(
                       "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[12px] font-medium transition-all",
-                      isSelected
-                        ? "bg-[#7C3AED] text-white shadow-sm"
-                        : "hover:opacity-80"
+                      isSelected ? "bg-[#7C3AED] text-white shadow-sm" : "hover:opacity-80"
                     )}
                     style={!isSelected ? { backgroundColor: colors.bg, color: colors.text } : undefined}
                   >
                     <Hash className="w-3 h-3" />
                     {data.tag.replace('#', '')}
-                    <span
-                      className={cn(
-                        "inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[10px] font-semibold",
-                        isSelected ? "bg-white/20 text-white" : "bg-white/80"
-                      )}
-                    >
+                    <span className={cn(
+                      "inline-flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-[10px] font-semibold",
+                      isSelected ? "bg-white/20 text-white" : "bg-white/80"
+                    )}>
                       {data.count}
                     </span>
                   </button>
@@ -1598,7 +1473,6 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
             </div>
           </div>
 
-          {/* Selected Hashtag - Show Filtered Comments */}
           {selectedHashtag && (
             <div className="mt-4 pt-4 border-t border-[#E5E7EB]">
               <div className="flex items-center justify-between mb-3">
@@ -1622,12 +1496,11 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
                 {filteredComments.map((comment) => (
                   <div key={comment.id} className="bg-[#F9FAFB] rounded-lg p-3">
                     <div className="flex gap-2.5">
-                      <div 
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0"
-                        style={{ backgroundColor: getAvatarColor(comment.user?.username || comment.user?.email) }}
-                      >
-                        {getUserInitials(comment.user?.username || comment.user?.email)}
-                      </div>
+                      <Avatar
+                        src={comment.user?.profilePicture}
+                        name={comment.user?.username || comment.user?.email || 'Unknown'}
+                        size="sm"
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <span className="text-[11px] font-semibold text-[#1A1A2E] truncate">
@@ -1640,10 +1513,7 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
                           )}
                         </div>
                         <p className="text-[12px] text-[#4B5563] leading-relaxed">
-                          <HighlightedText 
-                            text={getCommentText(comment)} 
-                            activeHashtag={selectedHashtag}
-                          />
+                          <HighlightedText text={getCommentText(comment)} activeHashtag={selectedHashtag} />
                         </p>
                       </div>
                     </div>
@@ -1666,10 +1536,7 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
                 key={item.tag}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-[#F3F4F6] text-[#6B7280]"
               >
-                <div 
-                  className="w-1.5 h-1.5 rounded-full" 
-                  style={{ backgroundColor: item.color }}
-                />
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
                 {item.tag}
               </span>
             ))}
@@ -1681,7 +1548,7 @@ const TagsTabView: React.FC<{ taskId: string; toast: (msg: { title: string; desc
 };
 
 // ============================================================
-// COMMENTS TAB VIEW (With Real API)
+// COMMENTS TAB VIEW (✅ FIXED: Uses Avatar)
 // ============================================================
 
 const CommentsTabView: React.FC<{ 
@@ -1708,7 +1575,6 @@ const CommentsTabView: React.FC<{
     fetchComments();
   }, [fetchComments]);
 
-  // Filter comments by hashtag if selected
   const filteredComments = useMemo(() => {
     if (!selectedHashtag) return comments;
     return comments.filter((comment: ExtendedComment) => {
@@ -1772,12 +1638,11 @@ const CommentsTabView: React.FC<{
               )}
 
               <div className="flex gap-2.5">
-                <div 
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold flex-shrink-0"
-                  style={{ backgroundColor: getAvatarColor(comment.user?.username || comment.user?.email) }}
-                >
-                  {getUserInitials(comment.user?.username || comment.user?.email)}
-                </div>
+                <Avatar
+                  src={comment.user?.profilePicture}
+                  name={comment.user?.username || comment.user?.email || 'Unknown'}
+                  size="md"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[12px] font-semibold text-[#1A1A2E] truncate">
@@ -1809,9 +1674,7 @@ const CommentsTabView: React.FC<{
                   disabled={resolvingId === String(comment.id)}
                   className={cn(
                     "flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded",
-                    comment.resolved 
-                      ? "text-[#10B981] bg-green-50" 
-                      : "text-[#8C8C9A] hover:bg-[#F3F4F6]"
+                    comment.resolved ? "text-[#10B981] bg-green-50" : "text-[#8C8C9A] hover:bg-[#F3F4F6]"
                   )}
                 >
                   {resolvingId === String(comment.id) ? (
@@ -1833,17 +1696,14 @@ const CommentsTabView: React.FC<{
 };
 
 // ============================================================
-// DISCUSSION TAB VIEW
+// DISCUSSION TAB VIEW (✅ FIXED: Uses Avatar with online status)
 // ============================================================
 
 const DiscussionTabView: React.FC<{ comments: ExtendedComment[] }> = ({ comments }) => {
   const formatCommentDate = (dateStr: string | number | undefined | null): { date: string; time: string } => {
-    if (!dateStr || dateStr === 'null' || dateStr === 'undefined') {
-      return { date: '', time: '' };
-    }
+    if (!dateStr || dateStr === 'null' || dateStr === 'undefined') return { date: '', time: '' };
     
     let d: Date;
-    
     if (typeof dateStr === 'number') {
       d = new Date(dateStr);
     } else {
@@ -1855,9 +1715,7 @@ const DiscussionTabView: React.FC<{ comments: ExtendedComment[] }> = ({ comments
       }
     }
     
-    if (isNaN(d.getTime())) {
-      return { date: '', time: '' };
-    }
+    if (isNaN(d.getTime())) return { date: '', time: '' };
     
     return {
       date: d.toLocaleDateString([], { month: 'short', day: 'numeric' }),
@@ -1882,15 +1740,13 @@ const DiscussionTabView: React.FC<{ comments: ExtendedComment[] }> = ({ comments
             
             return (
               <div key={comment.id} className="flex gap-2.5">
-                <div className="relative flex-shrink-0">
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold"
-                    style={{ backgroundColor: getAvatarColor(userName) }}
-                  >
-                    {getUserInitials(userName)}
-                  </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#10B981] border-2 border-white" />
-                </div>
+                <Avatar
+                  src={comment.user?.profilePicture}
+                  name={comment.user?.username || comment.user?.email || 'Unknown'}
+                  size="md"
+                  showStatus
+                  status="online"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[12px] font-semibold text-[#1A1A2E] truncate">{userName}</span>
@@ -1918,7 +1774,7 @@ const DiscussionTabView: React.FC<{ comments: ExtendedComment[] }> = ({ comments
 };
 
 // ============================================================
-// COMMENT INPUT BAR (Matching Figma)
+// COMMENT INPUT BAR
 // ============================================================
 
 const CommentInputBar: React.FC<{ 
@@ -1947,39 +1803,21 @@ const CommentInputBar: React.FC<{
         />
         <div className="flex items-center justify-between px-3 py-2 bg-white border-t border-[#F3F4F6]">
           <div className="flex items-center gap-3">
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <Plus className="h-4 w-4" />
-            </button>
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <Smile className="h-4 w-4" />
-            </button>
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <Paperclip className="h-4 w-4" />
-            </button>
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <AtSign className="h-4 w-4" />
-            </button>
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <MessageSquare className="h-4 w-4" />
-            </button>
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <Image className="h-4 w-4" />
-            </button>
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <Video className="h-4 w-4" />
-            </button>
-            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
-              <Mic className="h-4 w-4" />
-            </button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><Plus className="h-4 w-4" /></button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><Smile className="h-4 w-4" /></button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><Paperclip className="h-4 w-4" /></button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><AtSign className="h-4 w-4" /></button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><MessageSquare className="h-4 w-4" /></button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><Image className="h-4 w-4" /></button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><Video className="h-4 w-4" /></button>
+            <button className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors"><Mic className="h-4 w-4" /></button>
           </div>
           <button 
             onClick={onSubmit}
             disabled={!value.trim() || submitting}
             className={cn(
               "p-2 rounded-lg transition-colors",
-              value.trim() 
-                ? "bg-[#7C3AED] hover:bg-[#6D28D9] text-white" 
-                : "text-[#C4C4C4]"
+              value.trim() ? "bg-[#7C3AED] hover:bg-[#6D28D9] text-white" : "text-[#C4C4C4]"
             )}
           >
             {submitting ? <LoadingSpinner size="sm" /> : <Send className="h-4 w-4" />}
@@ -1992,7 +1830,7 @@ const CommentInputBar: React.FC<{
 };
 
 // ============================================================
-// USE TAGS SECTION (Collapsible - Shows hashtags from comments)
+// USE TAGS SECTION
 // ============================================================
 
 const UseTagsSection: React.FC<{ taskId: string }> = ({ taskId }) => {
@@ -2048,10 +1886,7 @@ const UseTagsSection: React.FC<{ taskId: string }> = ({ taskId }) => {
         className="w-full flex items-center justify-between py-2 hover:bg-[#F9FAFB] rounded-lg px-1 -mx-1 transition-colors"
       >
         <span className="text-[13px] font-medium text-[#1A1A2E]">Use Tags</span>
-        <ChevronDown className={cn(
-          "h-4 w-4 text-[#9CA3AF] transition-transform",
-          !isExpanded && "-rotate-90"
-        )} />
+        <ChevronDown className={cn("h-4 w-4 text-[#9CA3AF] transition-transform", !isExpanded && "-rotate-90")} />
       </button>
       
       {isExpanded && (
@@ -2059,10 +1894,7 @@ const UseTagsSection: React.FC<{ taskId: string }> = ({ taskId }) => {
           {hashtags.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {hashtags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-3 py-1.5 bg-[#F3F4F6] text-[#374151] text-[12px] font-medium rounded-lg"
-                >
+                <span key={tag} className="px-3 py-1.5 bg-[#F3F4F6] text-[#374151] text-[12px] font-medium rounded-lg">
                   {tag}
                 </span>
               ))}
@@ -2079,7 +1911,7 @@ const UseTagsSection: React.FC<{ taskId: string }> = ({ taskId }) => {
 };
 
 // ============================================================
-// TASK ITEMS TABS (Subtasks, Checklist, Action Items)
+// TASK ITEMS TABS
 // ============================================================
 
 type TaskItemsTab = 'subtasks' | 'checklist' | 'actions';
@@ -2091,7 +1923,6 @@ const TaskItemsTabs: React.FC<{
 }> = ({ taskId, listId, toast }) => {
   const [activeTab, setActiveTab] = useState<TaskItemsTab>('subtasks');
 
-  // Mock data for checklist and action items
   const mockChecklist = [
     { id: '1', name: 'Website design', checked: true },
     { id: '2', name: 'Branding - visiting card', checked: false },
@@ -2107,15 +1938,12 @@ const TaskItemsTabs: React.FC<{
 
   return (
     <div className="mt-2">
-      {/* Tab Headers */}
       <div className="flex items-center gap-4 border-b border-[#ECEDF0] mb-3">
         <button
           onClick={() => setActiveTab('subtasks')}
           className={cn(
             "pb-2 text-[13px] font-medium border-b-2 transition-colors -mb-px",
-            activeTab === 'subtasks' 
-              ? "text-[#1A1A2E] border-[#7C3AED]" 
-              : "text-[#9CA3AF] border-transparent hover:text-[#6B7280]"
+            activeTab === 'subtasks' ? "text-[#1A1A2E] border-[#7C3AED]" : "text-[#9CA3AF] border-transparent hover:text-[#6B7280]"
           )}
         >
           Subtasks
@@ -2124,9 +1952,7 @@ const TaskItemsTabs: React.FC<{
           onClick={() => setActiveTab('checklist')}
           className={cn(
             "pb-2 text-[13px] font-medium border-b-2 transition-colors -mb-px",
-            activeTab === 'checklist' 
-              ? "text-[#1A1A2E] border-[#7C3AED]" 
-              : "text-[#9CA3AF] border-transparent hover:text-[#6B7280]"
+            activeTab === 'checklist' ? "text-[#1A1A2E] border-[#7C3AED]" : "text-[#9CA3AF] border-transparent hover:text-[#6B7280]"
           )}
         >
           checklist
@@ -2135,23 +1961,19 @@ const TaskItemsTabs: React.FC<{
           onClick={() => setActiveTab('actions')}
           className={cn(
             "pb-2 text-[13px] font-medium border-b-2 transition-colors -mb-px",
-            activeTab === 'actions' 
-              ? "text-[#1A1A2E] border-[#7C3AED]" 
-              : "text-[#9CA3AF] border-transparent hover:text-[#6B7280]"
+            activeTab === 'actions' ? "text-[#1A1A2E] border-[#7C3AED]" : "text-[#9CA3AF] border-transparent hover:text-[#6B7280]"
           )}
         >
           Action items
         </button>
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'subtasks' && (
         <SubtasksSection taskId={taskId} listId={listId} toast={toast} />
       )}
 
       {activeTab === 'checklist' && (
         <div className="space-y-2">
-          {/* Progress */}
           <div className="flex items-center gap-3 mb-3">
             <CheckSquare className="h-4 w-4 text-[#7C3AED]" />
             <div className="flex-1 h-2 bg-[#E5E7EB] rounded-full overflow-hidden">
@@ -2163,38 +1985,25 @@ const TaskItemsTabs: React.FC<{
             <span className="text-[12px] text-[#6B7280]">{checkedCount}/{mockChecklist.length}</span>
           </div>
 
-          {/* Items */}
           {mockChecklist.map((item) => (
             <div key={item.id} className="flex items-center gap-3 py-2 group">
               <button className={cn(
                 "w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
-                item.checked 
-                  ? "bg-[#10B981] border-[#10B981] text-white" 
-                  : "border-[#D1D5DB] hover:border-[#7C3AED]"
+                item.checked ? "bg-[#10B981] border-[#10B981] text-white" : "border-[#D1D5DB] hover:border-[#7C3AED]"
               )}>
                 {item.checked && <Check className="h-3 w-3" />}
               </button>
-              <span className={cn(
-                "text-[13px] flex-1",
-                item.checked ? "text-[#9CA3AF] line-through" : "text-[#374151]"
-              )}>
+              <span className={cn("text-[13px] flex-1", item.checked ? "text-[#9CA3AF] line-through" : "text-[#374151]")}>
                 {item.name}
               </span>
               <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
-                <button className="p-1 hover:bg-[#F3F4F6] rounded">
-                  <Clock className="h-3.5 w-3.5 text-[#9CA3AF]" />
-                </button>
-                <button className="p-1 hover:bg-[#F3F4F6] rounded">
-                  <User className="h-3.5 w-3.5 text-[#9CA3AF]" />
-                </button>
-                <button className="p-1 hover:bg-[#F3F4F6] rounded">
-                  <MoreHorizontal className="h-3.5 w-3.5 text-[#9CA3AF]" />
-                </button>
+                <button className="p-1 hover:bg-[#F3F4F6] rounded"><Clock className="h-3.5 w-3.5 text-[#9CA3AF]" /></button>
+                <button className="p-1 hover:bg-[#F3F4F6] rounded"><User className="h-3.5 w-3.5 text-[#9CA3AF]" /></button>
+                <button className="p-1 hover:bg-[#F3F4F6] rounded"><MoreHorizontal className="h-3.5 w-3.5 text-[#9CA3AF]" /></button>
               </div>
             </div>
           ))}
 
-          {/* Add Item */}
           <button className="flex items-center gap-2 py-2 text-[12px] text-[#9CA3AF] hover:text-[#7C3AED] transition-colors">
             <Plus className="h-3.5 w-3.5" />
             <span>Add an item</span>
@@ -2226,7 +2035,7 @@ const TaskItemsTabs: React.FC<{
 };
 
 // ============================================================
-// HASHTAGS TAB VIEW (Right Panel - Simplified)
+// HASHTAGS TAB VIEW (✅ FIXED: Uses Avatar)
 // ============================================================
 
 const HashtagsTabView: React.FC<{ 
@@ -2251,10 +2060,8 @@ const HashtagsTabView: React.FC<{
     fetchComments();
   }, [taskId]);
 
-  // Extract hashtags with counts
   const hashtagData = useMemo(() => {
     const hashtagMap = new Map<string, { tag: string; count: number }>();
-
     comments.forEach((comment: ExtendedComment) => {
       const text = getCommentText(comment);
       const hashtags = extractHashtags(text);
@@ -2266,13 +2073,11 @@ const HashtagsTabView: React.FC<{
         }
       });
     });
-
     const values: { tag: string; count: number }[] = [];
-    hashtagMap.forEach((value: { tag: string; count: number }) => values.push(value));
+    hashtagMap.forEach((value) => values.push(value));
     return values.sort((a, b) => b.count - a.count);
   }, [comments]);
 
-  // Filter comments by selected tag
   const filteredComments = useMemo(() => {
     if (!selectedTag) return [];
     return comments.filter((comment: ExtendedComment) => {
@@ -2301,7 +2106,6 @@ const HashtagsTabView: React.FC<{
       
       {hashtagData.length > 0 ? (
         <div className="space-y-4">
-          {/* Hashtag Pills */}
           <div className="flex flex-wrap gap-2">
             {hashtagData.map((data) => {
               const isSelected = selectedTag === data.tag;
@@ -2311,9 +2115,7 @@ const HashtagsTabView: React.FC<{
                   onClick={() => handleTagClick(data.tag)}
                   className={cn(
                     "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all",
-                    isSelected
-                      ? "bg-[#7C3AED] text-white"
-                      : "bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]"
+                    isSelected ? "bg-[#7C3AED] text-white" : "bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]"
                   )}
                 >
                   <span>{data.tag}</span>
@@ -2328,7 +2130,6 @@ const HashtagsTabView: React.FC<{
             })}
           </div>
 
-          {/* Filtered Comments */}
           {selectedTag && filteredComments.length > 0 && (
             <div className="mt-4 pt-4 border-t border-[#ECEDF0]">
               <div className="flex items-center justify-between mb-3">
@@ -2346,12 +2147,11 @@ const HashtagsTabView: React.FC<{
                 {filteredComments.map((comment) => (
                   <div key={comment.id} className="bg-[#F9FAFB] rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <div 
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold"
-                        style={{ backgroundColor: getAvatarColor(comment.user?.username || comment.user?.email) }}
-                      >
-                        {getUserInitials(comment.user?.username || comment.user?.email)}
-                      </div>
+                      <Avatar
+                        src={comment.user?.profilePicture}
+                        name={comment.user?.username || comment.user?.email || 'Unknown'}
+                        size="xs"
+                      />
                       <span className="text-[11px] font-medium text-[#1A1A2E]">
                         {comment.user?.username || comment.user?.email || 'Unknown'}
                       </span>
@@ -2380,7 +2180,7 @@ const HashtagsTabView: React.FC<{
 };
 
 // ============================================================
-// DOCUMENTS TAB VIEW (Shows uploaded files)
+// DOCUMENTS TAB VIEW
 // ============================================================
 
 const DocumentsTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
@@ -2394,7 +2194,6 @@ const DocumentsTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
         setAttachments(Array.isArray(data) ? data : []);
       } catch (error) {
         console.log('Could not fetch attachments');
-        // Mock data for demo
         setAttachments([
           { id: '1', title: 'Tech requirements.pdf', size: 1258291, type: 'application/pdf', user: { username: 'DAUD' }, date: Date.now() - 900000 },
           { id: '2', title: 'gabdupuis22.zip', size: 67108864, type: 'application/zip', user: { username: 'DAUD' }, date: Date.now() - 900000 },
@@ -2477,7 +2276,7 @@ const DocumentsTabView: React.FC<{ taskId: string }> = ({ taskId }) => {
 };
 
 // ============================================================
-// SUBTASKS SECTION (New Figma Layout with API)
+// SUBTASKS SECTION
 // ============================================================
 
 const SubtasksSection: React.FC<{
@@ -2514,7 +2313,6 @@ const SubtasksSection: React.FC<{
 
   const handleCreate = async () => {
     if (!newSubtaskName.trim() || creating) return;
-
     setCreating(true);
     try {
       const newSubtask = await api.createSubtask(taskId, listId, { name: newSubtaskName.trim() });
@@ -2534,7 +2332,6 @@ const SubtasksSection: React.FC<{
     const isComplete = subtask.status?.status?.toLowerCase() === 'complete' || 
                        subtask.status?.status?.toLowerCase() === 'closed';
     const newStatus = isComplete ? 'to do' : 'complete';
-
     setTogglingId(subtask.id);
     try {
       await api.updateSubtask(subtask.id, { status: newStatus });
@@ -2554,7 +2351,6 @@ const SubtasksSection: React.FC<{
 
   const handleDelete = async (subtaskId: string) => {
     if (!confirm('Delete this subtask?')) return;
-
     try {
       await api.deleteSubtask(subtaskId);
       setSubtasks(subtasks.filter(st => st.id !== subtaskId));
@@ -2567,7 +2363,6 @@ const SubtasksSection: React.FC<{
 
   return (
     <div className="border-t border-[#ECEDF0]">
-      {/* Header Row */}
       <div className="flex items-center justify-between py-4">
         <div className="flex items-center gap-3">
           <span className="text-[15px] font-semibold text-[#1A1A2E]">Subtasks</span>
@@ -2584,21 +2379,14 @@ const SubtasksSection: React.FC<{
         </button>
       </div>
 
-      {/* Progress Bar */}
       <div className="h-1 bg-[#E5E7EB] rounded-full overflow-hidden mb-4">
-        <div 
-          className="h-full bg-[#10B981] rounded-full transition-all duration-300" 
-          style={{ width: `${progressPercent}%` }} 
-        />
+        <div className="h-full bg-[#10B981] rounded-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-6">
-          <LoadingSpinner />
-        </div>
+        <div className="flex justify-center py-6"><LoadingSpinner /></div>
       ) : (
         <>
-          {/* Add Subtask Input */}
           {isAddingSubtask && (
             <div className="flex items-center gap-3 py-3 border-b border-[#ECEDF0]">
               <div className="w-[18px] h-[18px] rounded border border-[#D1D5DB] flex-shrink-0" />
@@ -2630,7 +2418,6 @@ const SubtasksSection: React.FC<{
             </div>
           )}
 
-          {/* Subtask Items */}
           <div>
             {subtasks.map((subtask) => {
               const isComplete = subtask.status?.status?.toLowerCase() === 'complete' || 
@@ -2642,12 +2429,7 @@ const SubtasksSection: React.FC<{
                   key={subtask.id} 
                   className="flex items-center gap-3 py-3.5 border-b border-[#ECEDF0] group hover:bg-[#FAFBFC] -mx-2 px-2"
                 >
-                  {/* Square Checkbox */}
-                  <button 
-                    className="flex-shrink-0" 
-                    onClick={() => handleToggle(subtask)}
-                    disabled={togglingId === subtask.id}
-                  >
+                  <button className="flex-shrink-0" onClick={() => handleToggle(subtask)} disabled={togglingId === subtask.id}>
                     {togglingId === subtask.id ? (
                       <LoadingSpinner size="sm" />
                     ) : isComplete ? (
@@ -2659,28 +2441,18 @@ const SubtasksSection: React.FC<{
                     )}
                   </button>
                   
-                  {/* Subtask Name */}
-                  <span className={cn(
-                    "flex-1 text-[14px]", 
-                    isComplete ? "text-[#9CA3AF] line-through" : "text-[#1A1A2E]"
-                  )}>
+                  <span className={cn("flex-1 text-[14px]", isComplete ? "text-[#9CA3AF] line-through" : "text-[#1A1A2E]")}>
                     {subtask.name}
                   </span>
                   
-                  {/* Hover Actions */}
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 flex-shrink-0 mr-2">
-                    <button className="p-1 hover:bg-[#ECEDF0] rounded">
-                      <Clock className="h-3.5 w-3.5 text-[#8C8C9A]" />
-                    </button>
-                    <button className="p-1 hover:bg-[#ECEDF0] rounded">
-                      <User className="h-3.5 w-3.5 text-[#8C8C9A]" />
-                    </button>
+                    <button className="p-1 hover:bg-[#ECEDF0] rounded"><Clock className="h-3.5 w-3.5 text-[#8C8C9A]" /></button>
+                    <button className="p-1 hover:bg-[#ECEDF0] rounded"><User className="h-3.5 w-3.5 text-[#8C8C9A]" /></button>
                     <button className="p-1 hover:bg-red-50 rounded" onClick={() => handleDelete(subtask.id)}>
                       <Trash2 className="h-3.5 w-3.5 text-[#8C8C9A] hover:text-red-500" />
                     </button>
                   </div>
 
-                  {/* Status Badge */}
                   <span 
                     className="px-2.5 py-1 rounded text-[12px] font-medium flex-shrink-0"
                     style={{
@@ -2695,7 +2467,6 @@ const SubtasksSection: React.FC<{
             })}
           </div>
 
-          {/* Empty State */}
           {subtasks.length === 0 && !isAddingSubtask && (
             <div className="py-8 text-center">
               <p className="text-[14px] text-[#9CA3AF]">No subtasks yet</p>
@@ -2704,7 +2475,6 @@ const SubtasksSection: React.FC<{
         </>
       )}
 
-      {/* Bottom Divider */}
       <div className="border-b border-[#ECEDF0] mt-2" />
     </div>
   );
@@ -2727,7 +2497,6 @@ export const TaskDetailModal: React.FC = () => {
   const [comments, setComments] = useState<ExtendedComment[]>([]);
   const [selectedHashtag, setSelectedHashtag] = useState<string | null>(null);
   
-  // Field loading states
   const [statusLoading, setStatusLoading] = useState(false);
   const [priorityLoading, setPriorityLoading] = useState(false);
   const [assigneeLoading, setAssigneeLoading] = useState(false);
@@ -2735,12 +2504,10 @@ export const TaskDetailModal: React.FC = () => {
   const [tagsLoading, setTagsLoading] = useState(false);
   const [timeLoading, setTimeLoading] = useState(false);
   
-  // Data for dropdowns
   const [members, setMembers] = useState<any[]>([]);
   const [statuses, setStatuses] = useState<Status[]>([]);
   const [spaceTags, setSpaceTags] = useState<any[]>([]);
   
-  // Timer state
   const [timerRunning, setTimerRunning] = useState(false);
   const [timeTracked, setTimeTracked] = useState(0);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
@@ -2751,84 +2518,46 @@ export const TaskDetailModal: React.FC = () => {
   const listId = selectedTask?.list?.id || currentList?.id || '';
   const teamId = currentWorkspace?.id || '';
 
-  // Fetch workspace members and statuses
   useEffect(() => {
     const fetchData = async () => {
       if (!teamId) return;
       
       try {
-        // Try to fetch team/workspace members
         const membersData = await api.getMembers(teamId);
         setMembers(Array.isArray(membersData) ? membersData : []);
       } catch (error) {
-        // Fallback: use task assignees as available members
         console.log('Could not fetch members, using task assignees');
-        if (selectedTask?.assignees) {
-          setMembers(selectedTask.assignees);
-        }
+        if (selectedTask?.assignees) setMembers(selectedTask.assignees);
       }
 
-      // Get statuses from space if available
-      if (currentSpace?.statuses) {
-        setStatuses(currentSpace.statuses);
-      }
+      if (currentSpace?.statuses) setStatuses(currentSpace.statuses);
 
-      // Get tags from space if available
       try {
         if (currentSpace?.id) {
-          console.log('Fetching space tags for space:', currentSpace.id);
           const tagsData = await api.getSpaceTags(currentSpace.id);
-          console.log('Space tags response:', tagsData);
-          // tagsData is already an array from getSpaceTags
           setSpaceTags(Array.isArray(tagsData) ? tagsData : []);
-        } else {
-          console.log('No currentSpace.id available');
-          // Use tags from task as available tags
-          if (selectedTask?.tags?.length) {
-            setSpaceTags(selectedTask.tags);
-          }
-        }
-      } catch (error) {
-        console.error('Could not fetch space tags:', error);
-        // Fallback: use tags from current task
-        if (selectedTask?.tags?.length) {
+        } else if (selectedTask?.tags?.length) {
           setSpaceTags(selectedTask.tags);
         }
+      } catch (error) {
+        if (selectedTask?.tags?.length) setSpaceTags(selectedTask.tags);
       }
 
-      // Get time tracked for task
       if (selectedTask?.id) {
         const taskIdStr = String(selectedTask.id);
         try {
-          // First check if task has time_spent property (direct from ClickUp)
-          console.log('Task time_spent:', selectedTask.time_spent);
-          if (selectedTask.time_spent) {
-            const timeSpent = Number(selectedTask.time_spent) || 0;
-            console.log('Setting time from task.time_spent:', timeSpent, 'ms');
-            setTimeTracked(timeSpent);
-          }
-          
-          // Also try to fetch time entries
-          const timeEntries = await api.getTimeEntries(taskIdStr);
-          console.log('Time entries from API:', timeEntries);
-          if (Array.isArray(timeEntries) && timeEntries.length > 0) {
-            const totalTime = timeEntries.reduce((sum: number, entry: any) => {
-              return sum + (parseInt(entry.duration) || 0);
-            }, 0);
-            console.log('Total time from entries:', totalTime, 'ms');
-            if (totalTime > 0) {
-              setTimeTracked(totalTime);
-            }
-          }
-        } catch (error) {
-          console.log('Could not fetch time entries:', error);
-          // Use time_spent from task if available
           if (selectedTask.time_spent) {
             setTimeTracked(Number(selectedTask.time_spent) || 0);
           }
+          const timeEntries = await api.getTimeEntries(taskIdStr);
+          if (Array.isArray(timeEntries) && timeEntries.length > 0) {
+            const totalTime = timeEntries.reduce((sum: number, entry: any) => sum + (parseInt(entry.duration) || 0), 0);
+            if (totalTime > 0) setTimeTracked(totalTime);
+          }
+        } catch (error) {
+          if (selectedTask.time_spent) setTimeTracked(Number(selectedTask.time_spent) || 0);
         }
         
-        // Check for running timer
         if (teamId) {
           try {
             const runningTimer = await api.getRunningTimer(teamId);
@@ -2843,12 +2572,9 @@ export const TaskDetailModal: React.FC = () => {
       }
     };
 
-    if (isModalOpen) {
-      fetchData();
-    }
+    if (isModalOpen) fetchData();
   }, [isModalOpen, teamId, currentSpace, selectedTask?.assignees, selectedTask?.id, selectedTask?.time_spent]);
 
-  // Fetch comments
   useEffect(() => {
     const fetchComments = async () => {
       if (!selectedTask?.id) return;
@@ -2859,32 +2585,24 @@ export const TaskDetailModal: React.FC = () => {
         console.error('Failed to fetch comments:', error);
       }
     };
-    
-    if (isModalOpen && selectedTask?.id) {
-      fetchComments();
-    }
+    if (isModalOpen && selectedTask?.id) fetchComments();
   }, [isModalOpen, selectedTask?.id]);
 
-  // Handler: Update Status
   const handleStatusChange = async (status: string) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
     setStatusLoading(true);
     try {
       await api.updateTask(taskId, { status });
-      updateTask(taskId, { 
-        status: { ...selectedTask.status, status } 
-      });
+      updateTask(taskId, { status: { ...selectedTask.status, status } });
       toast({ title: 'Status updated' });
     } catch (error) {
-      console.error('Failed to update status:', error);
       toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
     } finally {
       setStatusLoading(false);
     }
   };
 
-  // Handler: Update Priority
   const handlePriorityChange = async (priorityId: number | null) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
@@ -2892,19 +2610,15 @@ export const TaskDetailModal: React.FC = () => {
     try {
       await api.updateTask(taskId, { priority: priorityId });
       const priorityLabel = PRIORITIES.find(p => p.id === priorityId?.toString())?.label || 'None';
-      updateTask(taskId, { 
-        priority: priorityId ? { id: priorityId.toString(), priority: priorityLabel, color: '' } : undefined 
-      });
+      updateTask(taskId, { priority: priorityId ? { id: priorityId.toString(), priority: priorityLabel, color: '' } : undefined });
       toast({ title: 'Priority updated' });
     } catch (error) {
-      console.error('Failed to update priority:', error);
       toast({ title: 'Error', description: 'Failed to update priority', variant: 'destructive' });
     } finally {
       setPriorityLoading(false);
     }
   };
 
-  // Handler: Add Assignee
   const handleAddAssignee = async (userId: number) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
@@ -2913,40 +2627,30 @@ export const TaskDetailModal: React.FC = () => {
       await api.updateTask(taskId, { assignees: { add: [userId] } });
       const member = members.find(m => (m.user?.id || m.id) === userId);
       const user = member?.user || member;
-      if (user) {
-        updateTask(taskId, { 
-          assignees: [...(selectedTask.assignees || []), user]
-        });
-      }
+      if (user) updateTask(taskId, { assignees: [...(selectedTask.assignees || []), user] });
       toast({ title: 'Assignee added' });
     } catch (error) {
-      console.error('Failed to add assignee:', error);
       toast({ title: 'Error', description: 'Failed to add assignee', variant: 'destructive' });
     } finally {
       setAssigneeLoading(false);
     }
   };
 
-  // Handler: Remove Assignee
   const handleRemoveAssignee = async (userId: number) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
     setAssigneeLoading(true);
     try {
       await api.updateTask(taskId, { assignees: { rem: [userId] } });
-      updateTask(taskId, { 
-        assignees: (selectedTask.assignees || []).filter(a => a.id !== userId && a.id !== userId.toString())
-      });
+      updateTask(taskId, { assignees: (selectedTask.assignees || []).filter(a => a.id !== userId && a.id !== userId.toString()) });
       toast({ title: 'Assignee removed' });
     } catch (error) {
-      console.error('Failed to remove assignee:', error);
       toast({ title: 'Error', description: 'Failed to remove assignee', variant: 'destructive' });
     } finally {
       setAssigneeLoading(false);
     }
   };
 
-  // Handler: Update Start Date
   const handleStartDateChange = async (timestamp: number | null) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
@@ -2956,14 +2660,12 @@ export const TaskDetailModal: React.FC = () => {
       updateTask(taskId, { start_date: timestamp?.toString() });
       toast({ title: 'Start date updated' });
     } catch (error) {
-      console.error('Failed to update start date:', error);
       toast({ title: 'Error', description: 'Failed to update start date', variant: 'destructive' });
     } finally {
       setDateLoading(false);
     }
   };
 
-  // Handler: Update Due Date
   const handleDueDateChange = async (timestamp: number | null) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
@@ -2973,88 +2675,47 @@ export const TaskDetailModal: React.FC = () => {
       updateTask(taskId, { due_date: timestamp?.toString() });
       toast({ title: 'Due date updated' });
     } catch (error) {
-      console.error('Failed to update due date:', error);
       toast({ title: 'Error', description: 'Failed to update due date', variant: 'destructive' });
     } finally {
       setDateLoading(false);
     }
   };
 
-  // Handler: Add Tag
   const handleAddTag = async (tagName: string) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
-    console.log('Adding tag:', tagName, 'to task:', taskId);
     setTagsLoading(true);
-    
-    // Optimistically update UI first
-    const newTag = spaceTags.find(t => t.name === tagName) || { 
-      name: tagName, 
-      tag_bg: '#C4B5FD', 
-      tag_fg: '#5B21B6' 
-    };
+    const newTag = spaceTags.find(t => t.name === tagName) || { name: tagName, tag_bg: '#C4B5FD', tag_fg: '#5B21B6' };
     const previousTags = selectedTask.tags || [];
-    updateTask(taskId, { 
-      tags: [...previousTags, newTag]
-    });
-    
+    updateTask(taskId, { tags: [...previousTags, newTag] });
     try {
-      // Use dedicated tag endpoint: POST /tasks/:taskId/tags/:tagName
       await api.addTaskTag(taskId, tagName);
-      console.log('Tag added successfully');
       toast({ title: 'Tag added' });
     } catch (error: any) {
-      console.error('Failed to add tag:', error);
-      
-      // Revert optimistic update on failure
       updateTask(taskId, { tags: previousTags });
-      
-      const errorMsg = error?.message || error?.error || 'Failed to add tag';
-      toast({ 
-        title: 'Error', 
-        description: errorMsg, 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Error', description: error?.message || 'Failed to add tag', variant: 'destructive' });
     } finally {
       setTagsLoading(false);
     }
   };
 
-  // Handler: Remove Tag
   const handleRemoveTag = async (tagName: string) => {
     if (!selectedTask?.id) return;
     const taskId = String(selectedTask.id);
-    console.log('Removing tag:', tagName, 'from task:', taskId);
     setTagsLoading(true);
-    
-    // Optimistically update UI first
     const previousTags = selectedTask.tags || [];
-    const newTags = previousTags.filter(t => t.name !== tagName);
-    updateTask(taskId, { tags: newTags });
-    
+    updateTask(taskId, { tags: previousTags.filter(t => t.name !== tagName) });
     try {
-      // Use dedicated tag endpoint: DELETE /tasks/:taskId/tags/:tagName
       await api.removeTaskTag(taskId, tagName);
-      console.log('Tag removed successfully');
       toast({ title: 'Tag removed' });
     } catch (error: any) {
-      console.error('Failed to remove tag:', error);
-      
-      // Revert optimistic update on failure
       updateTask(taskId, { tags: previousTags });
-      
-      const errorMsg = error?.message || error?.error || 'Failed to remove tag';
-      toast({ 
-        title: 'Error', 
-        description: errorMsg, 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Error', description: error?.message || 'Failed to remove tag', variant: 'destructive' });
     } finally {
       setTagsLoading(false);
     }
   };
 
-  // Handler: Start Timer
   const handleStartTimer = async () => {
     if (!selectedTask?.id || !teamId) return;
     const taskId = String(selectedTask.id);
@@ -3065,8 +2726,6 @@ export const TaskDetailModal: React.FC = () => {
       setTimerStartTime(Date.now());
       toast({ title: 'Timer started' });
     } catch (error) {
-      console.error('Failed to start timer:', error);
-      // Even if API fails, start local timer
       setTimerRunning(true);
       setTimerStartTime(Date.now());
       toast({ title: 'Timer started (local)' });
@@ -3075,7 +2734,6 @@ export const TaskDetailModal: React.FC = () => {
     }
   };
 
-  // Handler: Stop Timer
   const handleStopTimer = async () => {
     if (!selectedTask?.id || !timerStartTime || !teamId) return;
     setTimeLoading(true);
@@ -3087,8 +2745,6 @@ export const TaskDetailModal: React.FC = () => {
       setTimerStartTime(null);
       toast({ title: 'Timer stopped' });
     } catch (error) {
-      console.error('Failed to stop timer:', error);
-      // Still update local state
       setTimerRunning(false);
       setTimeTracked(prev => prev + duration);
       setTimerStartTime(null);
@@ -3098,23 +2754,16 @@ export const TaskDetailModal: React.FC = () => {
     }
   };
 
-  // Handler: Add Manual Time
   const handleAddManualTime = async (minutes: number) => {
     if (!selectedTask?.id || !teamId) return;
     const taskId = String(selectedTask.id);
     setTimeLoading(true);
     const durationMs = minutes * 60 * 1000;
     try {
-      await api.addTimeEntry(teamId, {
-        taskId: taskId,
-        start: Date.now() - durationMs,
-        duration: durationMs,
-      });
+      await api.addTimeEntry(teamId, { taskId, start: Date.now() - durationMs, duration: durationMs });
       setTimeTracked(prev => prev + durationMs);
       toast({ title: `Added ${minutes} minutes` });
     } catch (error) {
-      console.error('Failed to add time:', error);
-      // Still update local state
       setTimeTracked(prev => prev + durationMs);
       toast({ title: `Added ${minutes} minutes (local)` });
     } finally {
@@ -3125,19 +2774,14 @@ export const TaskDetailModal: React.FC = () => {
   const handleSubmitComment = async () => {
     if (!comment.trim() || !selectedTask?.id || submittingComment) return;
     const taskId = String(selectedTask.id);
-    
     setSubmittingComment(true);
     try {
-      await api.createTaskComment(taskId, { 
-        comment_text: comment.trim(),
-        notify_all: false 
-      });
+      await api.createTaskComment(taskId, { comment_text: comment.trim(), notify_all: false });
       setComment('');
       toast({ title: 'Comment added' });
       const data = await api.getTaskComments(taskId);
       setComments(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('Failed to add comment:', error);
       toast({ title: 'Error', description: 'Failed to add comment', variant: 'destructive' });
     } finally {
       setSubmittingComment(false);
@@ -3147,11 +2791,8 @@ export const TaskDetailModal: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => { 
       if (e.key === 'Escape') {
-        if (isMaximized) {
-          setIsMaximized(false);
-        } else {
-          closeTaskModal();
-        }
+        if (isMaximized) setIsMaximized(false);
+        else closeTaskModal();
       }
     };
     if (isModalOpen) {
@@ -3193,9 +2834,8 @@ export const TaskDetailModal: React.FC = () => {
             : "w-full max-w-[1100px] max-h-[90vh] mx-4"
         )}>
           
-          {/* LEFT PANEL - Narrower */}
+          {/* LEFT PANEL */}
           <div className="w-[480px] flex flex-col border-r border-[#ECEDF0]">
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-[#ECEDF0]">
               <div className="flex items-center gap-3">
                 <button className="flex items-center gap-1.5 text-[13px] text-[#5C5C6D] hover:text-[#1A1A2E]">
@@ -3230,9 +2870,7 @@ export const TaskDetailModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Content */}
             <div className="flex-1 overflow-y-auto overflow-x-visible px-5 py-4">
-              {/* Task Title + ETA Badge */}
               <div className="flex items-start justify-between gap-3 mb-4">
                 <h1 className="text-[22px] font-semibold text-[#1A1A2E] leading-tight">{task.name}</h1>
                 {countdown && (
@@ -3240,10 +2878,7 @@ export const TaskDetailModal: React.FC = () => {
                     "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium whitespace-nowrap flex-shrink-0",
                     countdown.isOverdue ? "bg-[#FEE2E2]" : "bg-[#F3F4F6]"
                   )}>
-                    <div className={cn(
-                      "w-2.5 h-2.5 rounded-sm",
-                      countdown.isOverdue ? "bg-red-500" : "bg-red-500"
-                    )} />
+                    <div className={cn("w-2.5 h-2.5 rounded-sm", countdown.isOverdue ? "bg-red-500" : "bg-red-500")} />
                     <span className={countdown.isOverdue ? "text-red-600" : "text-[#1A1A2E]"}>
                       {countdown.isOverdue 
                         ? `${countdown.days}d, ${countdown.hours}h, ${countdown.minutes}m overdue`
@@ -3254,7 +2889,6 @@ export const TaskDetailModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Countdown Box - Compact */}
               {countdown && (
                 <div className="bg-[#F8F9FB] rounded-lg p-4 mb-5">
                   <div className="flex items-center gap-6">
@@ -3274,75 +2908,37 @@ export const TaskDetailModal: React.FC = () => {
                 </div>
               )}
 
-              {/* Fields */}
               <div className="mb-6">
                 <div className="space-y-0">
                   <FieldRow icon={<CheckCircle2 className="h-4 w-4" />} label="Status">
-                    <StatusDropdown
-                      currentStatus={task.status}
-                      statuses={statuses}
-                      onSelect={handleStatusChange}
-                      loading={statusLoading}
-                    />
+                    <StatusDropdown currentStatus={task.status} statuses={statuses} onSelect={handleStatusChange} loading={statusLoading} />
                   </FieldRow>
                   <FieldRow icon={<User className="h-4 w-4" />} label="Assignees">
-                    <AssigneeDropdown
-                      assignees={assignees}
-                      members={members}
-                      onAdd={handleAddAssignee}
-                      onRemove={handleRemoveAssignee}
-                      loading={assigneeLoading}
-                    />
+                    <AssigneeDropdown assignees={assignees} members={members} onAdd={handleAddAssignee} onRemove={handleRemoveAssignee} loading={assigneeLoading} />
                   </FieldRow>
                   <FieldRow icon={<Calendar className="h-4 w-4" />} label="Dates">
                     <div className="flex items-center gap-2">
-                      <DatePickerButton
-                        value={task.start_date}
-                        placeholder="Start"
-                        onChange={handleStartDateChange}
-                        loading={dateLoading}
-                      />
+                      <DatePickerButton value={task.start_date} placeholder="Start" onChange={handleStartDateChange} loading={dateLoading} />
                       <span className="text-[#D1D5DB]">→</span>
-                      <DatePickerButton
-                        value={task.due_date}
-                        placeholder="Due"
-                        onChange={handleDueDateChange}
-                        loading={dateLoading}
-                      />
+                      <DatePickerButton value={task.due_date} placeholder="Due" onChange={handleDueDateChange} loading={dateLoading} />
                     </div>
                   </FieldRow>
                   <FieldRow icon={<Flag className="h-4 w-4" />} label="Priority">
-                    <PriorityDropdown
-                      currentPriority={task.priority}
-                      onSelect={handlePriorityChange}
-                      loading={priorityLoading}
-                    />
+                    <PriorityDropdown currentPriority={task.priority} onSelect={handlePriorityChange} loading={priorityLoading} />
                   </FieldRow>
                   <FieldRow icon={<Clock className="h-4 w-4" />} label="Track Time">
-                    <TrackTimeDropdown
-                      taskId={taskId}
-                      timeTracked={timeTracked}
-                      timerRunning={timerRunning}
-                      onStartTimer={handleStartTimer}
-                      onStopTimer={handleStopTimer}
-                      onAddTime={handleAddManualTime}
-                      loading={timeLoading}
-                    />
+                    <TrackTimeDropdown taskId={taskId} timeTracked={timeTracked} timerRunning={timerRunning} onStartTimer={handleStartTimer} onStopTimer={handleStopTimer} onAddTime={handleAddManualTime} loading={timeLoading} />
                   </FieldRow>
                 </div>
               </div>
 
-              {/* Use Tags Section - Collapsible */}
               <UseTagsSection taskId={taskId} />
-
-              {/* Subtasks / Checklist / Action Items Tabs */}
               <TaskItemsTabs taskId={taskId} listId={listId} toast={toast} />
             </div>
           </div>
 
-          {/* RIGHT PANEL - Wider */}
+          {/* RIGHT PANEL */}
           <div className="flex-1 flex flex-col bg-white">
-            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#ECEDF0]">
               <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E7EB] rounded-lg text-[12px] text-[#5C5C6D] hover:bg-[#F5F5F7]">
                 <Check className="h-3.5 w-3.5" />
@@ -3362,7 +2958,6 @@ export const TaskDetailModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Privacy Notice */}
             <div className="flex items-center justify-between px-4 py-2 bg-[#FAFBFC] border-b border-[#ECEDF0]">
               <div className="flex items-center gap-1.5 text-[11px] text-[#6B7280]">
                 <Lock className="h-3.5 w-3.5" />
@@ -3371,19 +2966,12 @@ export const TaskDetailModal: React.FC = () => {
               <button className="text-[11px] text-[#7C3AED] font-medium hover:underline">Make public</button>
             </div>
 
-            {/* Content + Sidebar */}
             <div className="flex-1 flex overflow-hidden">
               <div className="flex-1 flex flex-col overflow-hidden">
                 {renderRightPanelContent()}
-                <CommentInputBar 
-                  value={comment} 
-                  onChange={setComment} 
-                  onSubmit={handleSubmitComment}
-                  submitting={submittingComment}
-                />
+                <CommentInputBar value={comment} onChange={setComment} onSubmit={handleSubmitComment} submitting={submittingComment} />
               </div>
 
-              {/* Sidebar Icons */}
               <div className="w-14 flex flex-col items-center py-3 gap-1 border-l border-[#ECEDF0] bg-[#FAFBFC]">
                 <SidebarIcon icon={<FileText className="h-4 w-4" />} active={activeRightTab === 'activity'} onClick={() => setActiveRightTab('activity')} label="Activity" />
                 <div className="w-8 border-t border-[#ECEDF0] my-2" />
@@ -3399,7 +2987,6 @@ export const TaskDetailModal: React.FC = () => {
         </div>
       </div>
 
-      {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </>
   );
