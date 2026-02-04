@@ -107,6 +107,17 @@ const contrastText = (hex?: string | null): string => {
 /** Safe color with fallback */
 const safeColor = (c: any, fallback: string): string => (typeof c === 'string' && c ? c : fallback);
 
+/** Parse a due_date value (timestamp string, unix ms, or ISO) into ms */
+const parseDateToMs = (value?: string | null): number | null => {
+  if (!value) return null;
+  const parsed = parseInt(value);
+  if (!isNaN(parsed) && parsed > 1000000000) {
+    return parsed > 9999999999 ? parsed : parsed * 1000;
+  }
+  const d = new Date(value).getTime();
+  return isNaN(d) ? null : d;
+};
+
 // ============================================================
 // INLINE EDIT: TEXT
 // ============================================================
@@ -200,6 +211,9 @@ function InlineSelect<T>({
 
 // ============================================================
 // CELL: NAME
+// FIX: Single click → opens task detail (no stopPropagation)
+//      Double click → inline edit
+//      Pencil icon on hover → inline edit
 // ============================================================
 
 const NameCell: React.FC<{
@@ -238,8 +252,27 @@ const NameCell: React.FC<{
   }
 
   return (
-    <div className="flex-shrink-0 px-3 py-2 flex items-center gap-2 cursor-pointer group/name" style={{ width }} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
-      <span className="text-sm text-gray-800 truncate font-medium">{task.name}</span>
+    <div
+      className="flex-shrink-0 px-3 py-2 flex items-center gap-2 cursor-pointer group/name"
+      style={{ width }}
+      // Single click: does NOT stop propagation → bubbles to row → opens task detail modal
+      // Double click: stops propagation + enters inline edit mode
+      onDoubleClick={(e) => { e.stopPropagation(); onStartEdit(); }}
+    >
+      <span className="text-sm text-gray-800 truncate font-medium group-hover/name:text-purple-700 transition-colors">{task.name}</span>
+
+      {/* Pencil icon: click to rename (visible on hover) */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
+        className="opacity-0 group-hover/name:opacity-100 p-0.5 rounded hover:bg-gray-200 transition-all flex-shrink-0"
+        title="Rename task"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+          <path d="m15 5 4 4"/>
+        </svg>
+      </button>
+
       {accountability && (
         <div className="flex items-center gap-0.5 flex-shrink-0">
           {[0, 1, 2].map((i) => (
@@ -303,7 +336,7 @@ const StatusCell: React.FC<{
 };
 
 // ============================================================
-// CELL: PRIORITY — Muted flag for null (not "—")
+// CELL: PRIORITY — Muted flag for null, clickable "Set" placeholder
 // ============================================================
 
 const PriorityCell: React.FC<{
@@ -318,7 +351,7 @@ const PriorityCell: React.FC<{
   const hasPriority = priority && priority.priority;
 
   const pillClass = (() => {
-    if (!hasPriority) return 'bg-gray-50 text-gray-300';
+    if (!hasPriority) return 'bg-transparent text-gray-300 hover:text-gray-400 hover:bg-gray-50';
     const name = (priority.priority ?? '').toLowerCase();
     if (name === 'urgent') return 'bg-red-50 text-red-600';
     if (name === 'high') return 'bg-orange-50 text-orange-600';
@@ -330,10 +363,10 @@ const PriorityCell: React.FC<{
     <div className="flex-shrink-0 px-3 py-2 relative" style={{ width }} onClick={(e) => e.stopPropagation()}>
       <button
         onClick={onStartEdit}
-        className={cn('flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors hover:opacity-80', pillClass)}
+        className={cn('flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors', pillClass)}
       >
         <Flag className="w-3 h-3" style={{ color: safeColor(priority?.color, '#d1d5db') }} />
-        {hasPriority ? <span className="capitalize">{priority.priority}</span> : null}
+        {hasPriority ? <span className="capitalize">{priority.priority}</span> : <span className="text-[11px]">Set</span>}
       </button>
 
       {isEditing && (
@@ -355,7 +388,7 @@ const PriorityCell: React.FC<{
 };
 
 // ============================================================
-// CELL: DUE DATE — Urgency colors
+// CELL: DUE DATE — Urgency colors, "Set date" placeholder
 // ============================================================
 
 const DueDateCell: React.FC<{
@@ -368,16 +401,8 @@ const DueDateCell: React.FC<{
 }> = ({ value, width, isEditing, onStartEdit, onSave, onCancel }) => {
   const urgency = useMemo(() => {
     if (!value) return null;
-    // Handle both timestamp strings and ISO date strings
-    let ts: number;
-    const parsed = parseInt(value);
-    if (!isNaN(parsed) && parsed > 1000000000) {
-      // Likely a Unix timestamp (ms or seconds)
-      ts = parsed > 9999999999 ? parsed : parsed * 1000;
-    } else {
-      ts = new Date(value).getTime();
-    }
-    if (isNaN(ts)) return null;
+    const ts = parseDateToMs(value);
+    if (!ts) return null;
 
     const d = new Date(ts);
     const now = new Date();
@@ -403,8 +428,8 @@ const DueDateCell: React.FC<{
 
   if (!urgency) {
     return (
-      <div className="flex-shrink-0 px-3 py-2 cursor-pointer hover:bg-gray-50/50" style={{ width }} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
-        <span className="text-gray-300 text-sm">—</span>
+      <div className="flex-shrink-0 px-3 py-2 cursor-pointer group/date" style={{ width }} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
+        <span className="text-[11px] text-gray-300 group-hover/date:text-gray-400 transition-colors">Set date</span>
       </div>
     );
   }
@@ -424,7 +449,7 @@ const DueDateCell: React.FC<{
 };
 
 // ============================================================
-// CELL: ASSIGNEE
+// CELL: ASSIGNEE — "Assign" placeholder
 // ============================================================
 
 const AssigneeCell: React.FC<{
@@ -451,7 +476,7 @@ const AssigneeCell: React.FC<{
             </div>
           ))
         ) : (
-          <div className="w-6 h-6 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+          <div className="w-6 h-6 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-gray-400 transition-colors">
             <User className="w-3 h-3" />
           </div>
         )}
@@ -477,7 +502,7 @@ const AssigneeCell: React.FC<{
 };
 
 // ============================================================
-// CELL: TAGS
+// CELL: TAGS — "+" placeholder when empty
 // ============================================================
 
 const TagsCell: React.FC<{
@@ -503,7 +528,7 @@ const TagsCell: React.FC<{
             </span>
           ))
         ) : (
-          <span className="text-gray-300 text-sm">—</span>
+          <span className="w-5 h-5 rounded border border-dashed border-gray-300 flex items-center justify-center text-gray-300 hover:border-gray-400 hover:text-gray-400 transition-colors text-xs">+</span>
         )}
       </div>
 
@@ -536,41 +561,136 @@ const TagsCell: React.FC<{
 
 // ============================================================
 // CELL: ETA
+// FIX: Correct casing (currentEta not currentETA)
+//      Fallback to due_date when no accountability data
+//      Format: "5d, 23h, 50m left" / "2d, 5h overdue"
+//      Color: green/orange/red based on time remaining
 // ============================================================
 
-const ETACell: React.FC<{ accountability?: any; width: number }> = ({ accountability, width }) => {
-  if (!accountability?.currentETA) {
-    return <div className="flex-shrink-0 px-3 py-2" style={{ width }} onClick={(e) => e.stopPropagation()}><span className="text-gray-300 text-sm">—</span></div>;
+const ETACell: React.FC<{
+  accountability?: any;
+  dueDate?: string | null;
+  width: number;
+}> = ({ accountability, dueDate, width }) => {
+
+  const etaInfo = useMemo(() => {
+    let targetTime: number | null = null;
+    let isCompleted = false;
+
+    // Check if completed
+    if (accountability?.isCompleted || accountability?.completedAt) {
+      isCompleted = true;
+    }
+
+    // Try accountability ETA fields (fix: check multiple casings)
+    if (accountability) {
+      const etaValue =
+        accountability.currentEta ??
+        accountability.currentETA ??
+        accountability.etaDeadline ??
+        accountability.eta_deadline ??
+        accountability.graceDeadline ??
+        null;
+
+      if (etaValue) {
+        if (typeof etaValue === 'number') {
+          targetTime = etaValue > 9999999999 ? etaValue : etaValue * 1000;
+        } else {
+          targetTime = new Date(etaValue).getTime();
+        }
+        if (isNaN(targetTime!)) targetTime = null;
+      }
+    }
+
+    // Fallback: use due_date if no ETA from accountability
+    if (!targetTime && dueDate) {
+      targetTime = parseDateToMs(dueDate);
+    }
+
+    // Nothing to show
+    if (!targetTime) return null;
+
+    // If completed, show a completed state
+    if (isCompleted) {
+      return { label: 'Done', color: 'green' as const, isCompleted: true };
+    }
+
+    const diff = targetTime - Date.now();
+    const isOverdue = diff < 0;
+    const abs = Math.abs(diff);
+
+    const days = Math.floor(abs / 86400000);
+    const hours = Math.floor((abs % 86400000) / 3600000);
+    const minutes = Math.floor((abs % 3600000) / 60000);
+
+    // Build compact time string: "5d, 23h, 50m"
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    // Show minutes only when less than 7 days remaining (avoids clutter)
+    if (minutes > 0 && days < 7) parts.push(`${minutes}m`);
+
+    if (parts.length === 0) parts.push('< 1m');
+
+    const timeStr = parts.join(', ');
+    const label = isOverdue ? `${timeStr} overdue` : `${timeStr} left`;
+
+    // Color logic based on time remaining
+    let color: 'green' | 'orange' | 'red' = 'green';
+    if (isOverdue) {
+      color = 'red';
+    } else if (diff < 24 * 3600000) {
+      // Less than 24 hours
+      color = 'orange';
+    } else if (diff < 3 * 24 * 3600000) {
+      // Less than 3 days
+      color = 'orange';
+    }
+
+    // Override with accountability status if available
+    if (accountability?.status) {
+      const s = (typeof accountability.status === 'string' ? accountability.status : '').toUpperCase();
+      if (s === 'RED' || s === 'OVERDUE' || s === 'FAILED') color = 'red';
+      else if (s === 'ORANGE' || s === 'GRACE_PERIOD') color = 'orange';
+      else if (s === 'GREEN' || s === 'ACTIVE') color = 'green';
+    }
+
+    return { label, color, isCompleted: false };
+  }, [accountability, dueDate]);
+
+  // No ETA and no due date → show dash
+  if (!etaInfo) {
+    return (
+      <div className="flex-shrink-0 px-3 py-2" style={{ width }} onClick={(e) => e.stopPropagation()}>
+        <span className="text-gray-300 text-sm">—</span>
+      </div>
+    );
   }
 
-  const { status, isCompleted, currentETA } = accountability;
-  const diff = new Date(currentETA).getTime() - Date.now();
-  const overdue = diff < 0;
-  const abs = Math.abs(diff);
-  const days = Math.floor(abs / 86400000);
-  const hours = Math.floor((abs % 86400000) / 3600000);
-
-  let text = overdue ? 'Overdue' : 'Due soon';
-  if (days > 0) text = `${days}d ${overdue ? 'over' : 'left'}`;
-  else if (hours > 0) text = `${hours}h ${overdue ? 'over' : 'left'}`;
-
-  const colors: Record<string, { text: string; dot: string }> = {
-    GREEN: { text: 'text-green-600', dot: 'bg-green-500' },
-    ORANGE: { text: 'text-orange-500', dot: 'bg-orange-500' },
-    RED: { text: 'text-red-500', dot: 'bg-red-500' },
+  const colorMap = {
+    green: { dot: 'bg-green-500', text: 'text-green-600', bg: 'bg-green-50' },
+    orange: { dot: 'bg-orange-500', text: 'text-orange-500', bg: 'bg-orange-50' },
+    red: { dot: 'bg-red-500', text: 'text-red-500', bg: 'bg-red-50' },
   };
-  const c = colors[status] || { text: 'text-gray-500', dot: 'bg-gray-300' };
+
+  const c = colorMap[etaInfo.color];
 
   return (
-    <div className={cn('flex-shrink-0 px-3 py-2 flex items-center gap-1.5', isCompleted && 'opacity-50')} style={{ width }} onClick={(e) => e.stopPropagation()}>
-      <div className={cn('w-1.5 h-1.5 rounded-full', c.dot)} />
-      <span className={cn('text-xs', c.text)}>{text}</span>
+    <div
+      className={cn('flex-shrink-0 px-3 py-2 flex items-center gap-1.5', etaInfo.isCompleted && 'opacity-50')}
+      style={{ width }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className={cn('w-2 h-2 rounded-sm flex-shrink-0', c.dot)} />
+      <span className={cn('text-xs font-medium whitespace-nowrap', c.text)}>{etaInfo.label}</span>
     </div>
   );
 };
 
 // ============================================================
-// CELL: TIMER — Hide 0:00 when idle, show play on hover
+// CELL: TIMER
+// FIX: Clear format — "46h 46m" / "39m 50s" instead of "46:46:03"
+//      Hide 0 when idle, show play on hover
 // ============================================================
 
 const TimerCell: React.FC<{
@@ -579,12 +699,16 @@ const TimerCell: React.FC<{
   width: number;
   onToggle?: () => void;
 }> = ({ timer, timeSpent = 0, width, onToggle }) => {
-  const fmt = (ms: number) => {
-    const s = Math.floor(ms / 1000);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
+  const fmt = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    if (s > 0) return `${s}s`;
+    return '0s';
   };
 
   const total = (timeSpent ?? 0) + (timer?.elapsed ?? 0);
@@ -613,6 +737,7 @@ const TimerCell: React.FC<{
 
 // ============================================================
 // MAIN TASK ROW
+// FIX: Stronger hover state, single click opens task, edit via double-click
 // ============================================================
 
 export const TaskRow: React.FC<TaskRowProps> = ({
@@ -653,6 +778,16 @@ export const TaskRow: React.FC<TaskRowProps> = ({
   const isDragging = draggedTaskId === task.id;
   const isDragOver = dragOverTaskId === task.id;
   const visibleCols = useMemo(() => columns.filter((c) => c.visible), [columns]);
+
+  // Priority left-border color
+  const priorityBorderColor = useMemo(() => {
+    const p = task.priority?.priority?.toLowerCase();
+    if (p === 'urgent') return '#F42A2A';
+    if (p === 'high') return '#FFCC00';
+    if (p === 'normal') return '#6B7AFF';
+    if (p === 'low') return '#808080';
+    return 'transparent';
+  }, [task.priority]);
 
   // Handle updates with specific handlers then fallback
   const handleUpdate = useCallback((field: string, value: any) => {
@@ -706,13 +841,14 @@ export const TaskRow: React.FC<TaskRowProps> = ({
       ref={rowRef}
       className={cn(
         'flex items-center border-b border-gray-100 bg-white transition-all group',
-        'hover:bg-gray-50/50',
+        'hover:bg-purple-50/40',
         isDragging && 'opacity-40 bg-purple-50',
         isDragOver && dragPosition === 'above' && 'border-t-2 border-t-purple-500',
         isDragOver && dragPosition === 'below' && 'border-b-2 border-b-purple-500',
-        isSelected && 'bg-purple-50/40',
+        isSelected && 'bg-purple-50/60',
         isUpdating && 'opacity-60 pointer-events-none'
       )}
+      style={{ borderLeft: `3px solid ${priorityBorderColor}` }}
       onClick={() => { if (!editingField) onClick?.(task); }}
       onDragOver={handleDragOver}
       onDragLeave={() => { if (dragOverTaskId === task.id) { setDragOverTaskId(null); setDragPosition(null); } }}
@@ -752,7 +888,7 @@ export const TaskRow: React.FC<TaskRowProps> = ({
           case 'tags':
             return <TagsCell key={col.id} tags={task.tags} availableTags={availableTags} width={col.width} isEditing={editingField === 'tags'} onStartEdit={() => setEditingField('tags')} onAddTag={(t) => handleUpdate('addTag', t.name)} onRemoveTag={(n) => handleUpdate('removeTag', n)} onCancel={() => setEditingField(null)} />;
           case 'eta':
-            return <ETACell key={col.id} accountability={accountability} width={col.width} />;
+            return <ETACell key={col.id} accountability={accountability} dueDate={task.due_date} width={col.width} />;
           case 'timer':
             return <TimerCell key={col.id} timer={isTimerRunning ? { isRunning: true, elapsed: timerElapsed } : (task as any).timer} timeSpent={(task as any).time_spent} width={col.width} onToggle={() => { isTimerRunning ? onTimerStop?.(task.id) : onTimerStart?.(task.id); onTimerToggle?.(task.id); }} />;
           default:
