@@ -239,25 +239,42 @@ export interface RunningTimer {
   duration: number;
 }
 
-// Accountability types
+// Accountability types - matches backend FormattedAccountability
 export interface TaskAccountability {
   id: string;
-  taskId: string;
-  userId: string;
-  listId: string;
-  etaSetAt?: string;
-  etaDeadline?: string;
-  graceDeadline?: string;
-  originalEta?: number;
-  currentEta?: number;
-  gracePeriod?: number;
-  extensions: ETAExtension[];
-  strikes: number;
+  taskRefId: string;
+  clickupTaskId: string;
+  assignee: {
+    id: string;
+    name: string;
+    email: string;
+    avatarUrl?: string;
+  };
+  originalEta: string | null;
+  currentEta: string | null;
+  etaHistory: EtaHistoryEntry[];
+  strikeCount: number;
   maxStrikes: number;
+  strikesRemaining: number;
   status: AccountabilityStatus;
-  completedAt?: string;
+  isExpired: boolean;
+  canExtend: boolean;
+  canSetEta: boolean;
+  isLocked: boolean;
+  completedAt: string | null;
+  totalTimeSpent: number | null;
+  requiresAction: boolean;
+  notificationActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EtaHistoryEntry {
+  eta: string;
+  setAt: string;
+  reason?: string;
+  type: 'initial' | 'extended';
+  strikeNumber?: number;
 }
 
 export interface ETAExtension {
@@ -270,13 +287,7 @@ export interface ETAExtension {
   strikeApplied: boolean;
 }
 
-export type AccountabilityStatus =
-  | 'not_set'
-  | 'active'
-  | 'grace_period'
-  | 'overdue'
-  | 'completed'
-  | 'failed';
+export type AccountabilityStatus = 'GREEN' | 'ORANGE' | 'RED';
 
 // Panel types
 export type PanelType =

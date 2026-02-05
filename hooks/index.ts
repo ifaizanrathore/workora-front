@@ -6,3 +6,5 @@ export * from './useCountdown';
 export * from './useProfile';
 export * from './usePanelHooks';
 export * from './usePageLoading';
+export { useSocket, useTaskSocket } from './useSocket';
+export type { SocketState } from './useSocket';

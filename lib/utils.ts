@@ -561,7 +561,14 @@ export interface CountdownTime {
  */
 export function getCountdown(targetDate: string | number | Date): CountdownTime {
   const now = new Date().getTime();
-  const target = new Date(targetDate).getTime();
+  // Handle string timestamps (e.g., "1737619200000") by parsing to number first
+  let target: number;
+  if (typeof targetDate === 'string') {
+    const parsed = parseInt(targetDate, 10);
+    target = !isNaN(parsed) && parsed > 0 ? new Date(parsed).getTime() : new Date(targetDate).getTime();
+  } else {
+    target = new Date(targetDate).getTime();
+  }
   const diff = target - now;
   
   const isOverdue = diff < 0;
@@ -598,11 +605,28 @@ export function getCountdown(targetDate: string | number | Date): CountdownTime 
   };
 }
 /**
+ * Parse date handling string timestamps (milliseconds)
+ */
+function parseDate(date: string | Date | number): Date {
+  if (date instanceof Date) return date;
+  if (typeof date === 'number') return new Date(date);
+  // Handle string timestamps like "1737619200000"
+  const parsed = parseInt(date, 10);
+  if (!isNaN(parsed) && parsed > 1000000000000) {
+    return new Date(parsed);
+  }
+  return new Date(date);
+}
+
+/**
  * Format time ago (e.g., "2 mins ago", "1 hour ago")
  */
 export function formatTimeAgo(date: string | Date | number): string {
   const now = new Date();
-  const then = new Date(date);
+  const then = parseDate(date);
+
+  if (isNaN(then.getTime())) return '';
+
   const diffMs = now.getTime() - then.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
@@ -613,8 +637,33 @@ export function formatTimeAgo(date: string | Date | number): string {
   if (diffMin < 60) return `${diffMin} min${diffMin > 1 ? 's' : ''} ago`;
   if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
   if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-  
+
   return formatDate(date, { short: true });
+}
+
+/**
+ * Format time compact (e.g., "2m", "1h", "5d")
+ */
+export function formatTimeCompact(date: string | Date | number): string {
+  const now = new Date();
+  const then = parseDate(date);
+
+  if (isNaN(then.getTime())) return '';
+
+  const diffMs = now.getTime() - then.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  const diffWeek = Math.floor(diffDay / 7);
+
+  if (diffSec < 60) return 'now';
+  if (diffMin < 60) return `${diffMin}m`;
+  if (diffHour < 24) return `${diffHour}h`;
+  if (diffDay < 7) return `${diffDay}d`;
+  if (diffWeek < 4) return `${diffWeek}w`;
+
+  return then.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 /**

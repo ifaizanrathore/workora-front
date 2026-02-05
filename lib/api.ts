@@ -891,23 +891,24 @@ class ApiClient {
     eta: string;
     reason?: string;
     syncFromDueDate?: boolean;
+    dueDate?: string;
   }) {
     await this.guardTaskNotCompleted(taskId, 'set ETA');
-    
+
     const accountability = await this.getTaskAccountability(taskId);
     if (accountability?.currentEta && !accountability.isExpired && !accountability.completedAt) {
       throw new Error('Cannot change ETA before it expires. Complete the task or wait for the current ETA to expire.');
     }
-    
+
     return this.request<any>(`/accountability/task/${taskId}/eta?listId=${listId}`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async extendEta(taskId: string, data: { newEta: string; reason: string }) {
+  async extendEta(taskId: string, data: { newEta: string; reason: string; dueDate?: string }) {
     await this.guardTaskNotCompleted(taskId, 'extend ETA');
-    
+
     const accountability = await this.getTaskAccountability(taskId);
     if (!accountability?.currentEta) {
       throw new Error('No ETA set. Use "Set ETA" to set an initial deadline.');
@@ -915,14 +916,14 @@ class ApiClient {
     if (!accountability.isExpired) {
       throw new Error('Cannot extend ETA before it expires. Complete the task or wait for expiry.');
     }
-    
+
     return this.request<any>(`/accountability/task/${taskId}/extend`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async postponeEta(taskId: string, data: { newEta: string; reason: string }) {
+  async postponeEta(taskId: string, data: { newEta: string; reason: string; dueDate?: string }) {
     return this.extendEta(taskId, data);
   }
 

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { TaskAccountability } from '@/types';
 
 export function useTaskAccountability(taskId?: string | null) {
-  const [data, setData] = useState<any | null>(null);
+  const [data, setData] = useState<TaskAccountability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

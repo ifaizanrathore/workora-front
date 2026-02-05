@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
-import { Lock, Globe } from 'lucide-react';
-import { useTaskActivity } from '@/hooks';
+import React, { useState, useEffect } from 'react';
+import { Lock, Globe, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api';
 import { formatTimeAgo } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -12,72 +12,96 @@ interface ActivityPanelProps {
   taskId: string;
 }
 
-// Mock activity data for display
-const mockActivity = [
-  {
-    id: '1',
-    type: 'task_created',
-    user: { username: 'You', profilePicture: null },
-    message: 'You created this task',
-    timestamp: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '2',
-    type: 'status_changed',
-    user: { username: 'You', profilePicture: null },
-    message: 'You set status to',
-    status: 'want',
-    timestamp: new Date().toISOString(),
-  },
-];
+interface ActivityItem {
+  id: string;
+  field?: string;
+  before?: any;
+  after?: any;
+  date?: string;
+  user?: {
+    id?: number;
+    username?: string;
+    email?: string;
+    profilePicture?: string;
+  };
+}
 
 export const ActivityPanel: React.FC<ActivityPanelProps> = ({ taskId }) => {
-  const { data: activity, isLoading } = useTaskActivity(taskId);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const displayActivity = activity || mockActivity;
+  useEffect(() => {
+    const fetchActivity = async () => {
+      if (!taskId) return;
+
+      setIsLoading(true);
+      try {
+        const data = await api.getTaskActivity(taskId);
+        setActivities(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Failed to fetch activity:', err);
+        setActivities([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchActivity();
+  }, [taskId]);
+
+  const formatActivityMessage = (activity: ActivityItem): string => {
+    const field = activity.field || 'task';
+    const userName = activity.user?.username || 'Someone';
+
+    if (activity.before === null && activity.after !== null) {
+      return `${userName} set ${field} to "${activity.after}"`;
+    }
+    if (activity.before !== null && activity.after === null) {
+      return `${userName} removed ${field}`;
+    }
+    if (activity.before !== null && activity.after !== null) {
+      return `${userName} changed ${field} from "${activity.before}" to "${activity.after}"`;
+    }
+    return `${userName} updated ${field}`;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <Loader2 className="h-6 w-6 animate-spin text-[#7C3AED]" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Privacy Notice */}
-      <div className="flex items-center justify-between px-4 py-3 bg-amber-50 border-b border-amber-100">
-        <div className="flex items-center gap-2 text-sm">
-          <Lock className="h-4 w-4 text-amber-600" />
-          <span className="text-amber-700">This task is private to you.</span>
-        </div>
-        <Button variant="link" size="sm" className="text-primary">
-          Make public
-        </Button>
-      </div>
-
       {/* Activity Header */}
       <div className="px-4 py-4">
-        <h3 className="text-xl font-bold text-text-primary">Activity</h3>
+        <h3 className="text-xl font-bold text-[#1A1A2E]">Activity</h3>
       </div>
 
       {/* Activity List */}
       <div className="flex-1 overflow-y-auto px-4 space-y-4">
-        {displayActivity.map((item: any) => (
-          <div key={item.id} className="flex items-start gap-3">
-            <div className="flex-1">
-              <p className="text-sm text-text-secondary">
-                {item.message}
-                {item.status && (
-                  <Badge variant="success" className="ml-2">
-                    {item.status}
-                  </Badge>
-                )}
-              </p>
+        {activities.length > 0 ? (
+          activities.map((activity) => (
+            <div key={activity.id} className="flex items-start gap-3">
+              <Avatar
+                name={activity.user?.username || 'User'}
+                src={activity.user?.profilePicture}
+                size="sm"
+              />
+              <div className="flex-1">
+                <p className="text-sm text-[#6B7280]">
+                  {formatActivityMessage(activity)}
+                </p>
+              </div>
+              <span className="text-xs text-[#9CA3AF] whitespace-nowrap">
+                {activity.date ? formatTimeAgo(activity.date) : ''}
+              </span>
             </div>
-            <span className="text-xs text-text-tertiary whitespace-nowrap">
-              {item.timestamp === new Date().toISOString().split('T')[0]
-                ? 'Just now'
-                : formatTimeAgo(item.timestamp)}
-            </span>
-          </div>
-        ))}
-
-        {displayActivity.length === 0 && (
-          <div className="text-center py-8 text-text-tertiary">
+          ))
+        ) : (
+          <div className="text-center py-8 text-[#9CA3AF]">
             <p>No activity yet</p>
           </div>
         )}
