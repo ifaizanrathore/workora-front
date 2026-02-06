@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
+import type { Attachment, Tag, Comment } from '@/types';
 
 // ============================================================
-// useTaskActivity - For ActivityPanel
+// Types
 // ============================================================
 
 export interface TaskActivity {
@@ -17,6 +18,20 @@ export interface TaskActivity {
   timestamp: string | number;
 }
 
+// Comment structure from API
+interface APIComment {
+  id: string;
+  comment_text?: string;
+  text?: string;
+  user?: { username?: string; profilePicture?: string | null };
+  date?: string;
+  created_at?: string;
+}
+
+// ============================================================
+// useTaskActivity - For ActivityPanel
+// ============================================================
+
 export function useTaskActivity(taskId: string) {
   const [data, setData] = useState<TaskActivity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,17 +39,14 @@ export function useTaskActivity(taskId: string) {
 
   const fetchActivity = useCallback(async () => {
     if (!taskId) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      let response: any[] = [];
-      if (typeof (api as any).getTaskComments === 'function') {
-        response = await (api as any).getTaskComments(taskId) || [];
-      }
-      
-      const activities: TaskActivity[] = response.map((item: any) => ({
+      const response = await api.getTaskComments(taskId) || [];
+
+      const activities: TaskActivity[] = response.map((item: APIComment) => ({
         id: item.id,
         type: 'comment' as const,
         action: 'commented',
@@ -57,7 +69,7 @@ export function useTaskActivity(taskId: string) {
       });
 
       setData(activities);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch activity:', err);
       setData([
         {
@@ -86,19 +98,16 @@ export function useTaskActivity(taskId: string) {
 // ============================================================
 
 export function useTaskDiscussion(taskId: string) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchDiscussion = useCallback(async () => {
     if (!taskId) return;
-    
+
     setIsLoading(true);
     try {
-      let response: any[] = [];
-      if (typeof (api as any).getTaskComments === 'function') {
-        response = await (api as any).getTaskComments(taskId) || [];
-      }
-      setData(response);
+      const response = await api.getTaskComments(taskId) || [];
+      setData(response as Comment[]);
     } catch (err) {
       console.error('Failed to fetch discussion:', err);
       setData([]);
@@ -121,22 +130,16 @@ export function useTaskDiscussion(taskId: string) {
 export function useSetTaskETA() {
   const [isLoading, setIsLoading] = useState(false);
 
-  const mutate = async ({ taskId, listId, eta, reason }: { 
-    taskId: string; 
+  const mutate = async ({ taskId, listId, eta, reason }: {
+    taskId: string;
     listId: string;
-    eta: string; 
+    eta: string;
     reason?: string;
   }) => {
     setIsLoading(true);
     try {
-      // Use the accountability endpoint if available
-      if (typeof (api as any).setTaskETA === 'function') {
-        const result = await (api as any).setTaskETA(taskId, listId, { eta, reason });
-        return result;
-      }
-      // Method not available - log warning
-      console.warn('setTaskETA not available in API');
-      return null;
+      const result = await api.setEta(taskId, listId, { eta, reason });
+      return result;
     } catch (err) {
       console.error('Failed to set ETA:', err);
       throw err;
@@ -155,20 +158,15 @@ export function useSetTaskETA() {
 export function useExtendTaskETA() {
   const [isLoading, setIsLoading] = useState(false);
 
-  const mutate = async ({ taskId, newEta, reason }: { 
-    taskId: string; 
-    newEta: string; 
+  const mutate = async ({ taskId, newEta, reason }: {
+    taskId: string;
+    newEta: string;
     reason: string;
   }) => {
     setIsLoading(true);
     try {
-      if (typeof (api as any).extendEta === 'function') {
-        const result = await (api as any).extendEta(taskId, { newEta, reason });
-        return result;
-      }
-      // Method not available - log warning
-      console.warn('extendEta not available in API');
-      return null;
+      const result = await api.extendEta(taskId, { newEta, reason });
+      return result;
     } catch (err) {
       console.error('Failed to extend ETA:', err);
       throw err;
@@ -185,20 +183,16 @@ export function useExtendTaskETA() {
 // ============================================================
 
 export function useAttachments(taskId: string) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchAttachments = useCallback(async () => {
     if (!taskId) return;
-    
+
     setIsLoading(true);
     try {
-      if (typeof (api as any).getTask === 'function') {
-        const task = await (api as any).getTask(taskId);
-        setData(task?.attachments || []);
-      } else {
-        setData([]);
-      }
+      const task = await api.getTask(taskId);
+      setData((task?.attachments as Attachment[]) || []);
     } catch (err) {
       console.error('Failed to fetch attachments:', err);
       setData([]);
@@ -219,7 +213,7 @@ export function useAttachments(taskId: string) {
 // ============================================================
 
 export function useTags(spaceId?: string) {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Tag[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchTags = useCallback(async () => {
@@ -227,15 +221,11 @@ export function useTags(spaceId?: string) {
       setData([]);
       return;
     }
-    
+
     setIsLoading(true);
     try {
-      if (typeof (api as any).getSpaceTags === 'function') {
-        const response = await (api as any).getSpaceTags(spaceId);
-        setData(response || []);
-      } else {
-        setData([]);
-      }
+      const response = await api.getSpaceTags(spaceId);
+      setData((response as Tag[]) || []);
     } catch (err) {
       console.error('Failed to fetch tags:', err);
       setData([]);
@@ -261,11 +251,7 @@ export function useAddTag() {
   const mutate = async ({ taskId, tagName }: { taskId: string; tagName: string }) => {
     setIsLoading(true);
     try {
-      if (typeof (api as any).addTaskTag === 'function') {
-        await (api as any).addTaskTag(taskId, tagName);
-      } else {
-        console.warn('addTaskTag not available in API');
-      }
+      await api.addTaskTag(taskId, tagName);
     } catch (err) {
       console.error('Failed to add tag:', err);
       throw err;
@@ -287,11 +273,7 @@ export function useRemoveTag() {
   const mutate = async ({ taskId, tagName }: { taskId: string; tagName: string }) => {
     setIsLoading(true);
     try {
-      if (typeof (api as any).removeTaskTag === 'function') {
-        await (api as any).removeTaskTag(taskId, tagName);
-      } else {
-        console.warn('removeTaskTag not available in API');
-      }
+      await api.removeTaskTag(taskId, tagName);
     } catch (err) {
       console.error('Failed to remove tag:', err);
       throw err;
@@ -313,12 +295,8 @@ export function useCreateComment() {
   const mutate = async ({ taskId, text }: { taskId: string; text: string }) => {
     setIsLoading(true);
     try {
-      if (typeof (api as any).createTaskComment === 'function') {
-        const result = await (api as any).createTaskComment(taskId, { comment_text: text });
-        return result;
-      }
-      console.warn('createTaskComment not available in API');
-      return null;
+      const result = await api.createTaskComment(taskId, { comment_text: text });
+      return result;
     } catch (err) {
       console.error('Failed to create comment:', err);
       throw err;
@@ -331,24 +309,20 @@ export function useCreateComment() {
 }
 
 // ============================================================
-// useUpdateComment - For CommentsPanel  
+// useUpdateComment - For CommentsPanel
 // ============================================================
 
 export function useUpdateComment() {
   const [isLoading, setIsLoading] = useState(false);
 
-  const mutate = async ({ commentId, input, taskId }: { 
-    commentId: string; 
-    input: { resolved?: boolean; comment_text?: string }; 
+  const mutate = async ({ commentId, input }: {
+    commentId: string;
+    input: { resolved?: boolean; comment_text?: string };
     taskId: string;
   }) => {
     setIsLoading(true);
     try {
-      if (typeof (api as any).updateComment === 'function') {
-        await (api as any).updateComment(commentId, input);
-      } else {
-        console.warn('updateComment not available in API');
-      }
+      await api.updateComment(commentId, input);
     } catch (err) {
       console.error('Failed to update comment:', err);
       throw err;

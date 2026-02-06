@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Check, CheckCircle2, Circle, Loader2, Filter } from 'lucide-react';
+import { Check, CheckCircle2, Circle, Filter } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatTimeCompact, cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
+import { SkeletonCommentsPanel } from '@/components/ui/skeleton';
 
 interface CommentsPanelProps {
   taskId: string;
@@ -92,11 +93,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({ taskId }) => {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <Loader2 className="h-6 w-6 animate-spin text-[#7C3AED]" />
-      </div>
-    );
+    return <SkeletonCommentsPanel />;
   }
 
   return (

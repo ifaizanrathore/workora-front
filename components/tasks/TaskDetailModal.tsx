@@ -9,7 +9,7 @@ import {
   Bell,
   ChevronDown,
   Calendar,
-  User,
+  User as UserIcon,
   Flag,
   Clock,
   Hash,
@@ -33,12 +33,21 @@ import {
   Video,
   Mic,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, type CountdownTime } from '@/lib/utils';
 import { useTaskStore, useWorkspaceStore } from '@/stores';
 import { api } from '@/lib/api';
 import { useCreateComment, useCountdown, useTaskAccountability } from '@/hooks';
 import { Avatar } from '@/components/ui/avatar';
 import toast from 'react-hot-toast';
+import type { User, Status, Tag, TaskAccountability, TimeEntry, Priority } from '@/types';
+
+// Priority type from PriorityPopover (uses 'label' instead of 'priority')
+interface PopoverPriority {
+  id: string;
+  label: string;
+  color: string;
+  textColor: string;
+}
 
 // Panels — self-contained, just need taskId
 import { ActivityPanel, CommentsPanel, HashtagsPanel, LinksPanel } from '@/components/panels';
@@ -68,13 +77,13 @@ const TimeBox: React.FC<{ value: number; label: string; isOverdue?: boolean }> =
   <div className="text-center">
     <div className={cn(
       "text-[24px] font-bold leading-none",
-      isOverdue ? "text-red-500" : "text-[#1A1A2E]"
+      isOverdue ? "text-red-500" : "text-[#1A1A2E] dark:text-white"
     )}>
       {isOverdue ? "00" : String(value).padStart(2, '0')}
     </div>
     <div className={cn(
       "text-[10px] mt-0.5",
-      isOverdue ? "text-red-400" : "text-[#9CA3AF]"
+      isOverdue ? "text-red-400" : "text-[#9CA3AF] dark:text-gray-500"
     )}>
       {label}
     </div>
@@ -86,10 +95,10 @@ const FieldRow: React.FC<{ icon: React.ReactNode; label: string; children: React
   label,
   children,
 }) => (
-  <div className="flex items-center gap-3 py-2.5 border-b border-[#F3F4F6] last:border-0">
+  <div className="flex items-center gap-3 py-2.5 border-b border-[#F3F4F6] dark:border-gray-700 last:border-0">
     <div className="flex items-center gap-2.5 w-[120px] flex-shrink-0">
-      <span className="text-[#9CA3AF]">{icon}</span>
-      <span className="text-[13px] text-[#6B7280] font-medium">{label}</span>
+      <span className="text-[#9CA3AF] dark:text-gray-500">{icon}</span>
+      <span className="text-[13px] text-[#6B7280] dark:text-gray-400 font-medium">{label}</span>
     </div>
     <div className="flex-1 min-w-0">{children}</div>
   </div>
@@ -106,7 +115,7 @@ const SidebarIcon: React.FC<{
     title={label}
     className={cn(
       'w-10 h-10 rounded-lg flex items-center justify-center transition-colors',
-      active ? 'bg-[#F3F0FF] text-[#7C3AED]' : 'text-[#9CA3AF] hover:bg-[#F5F5F7] hover:text-[#6B7280]'
+      active ? 'bg-[#F3F0FF] dark:bg-purple-900/30 text-[#7C3AED] dark:text-purple-400' : 'text-[#9CA3AF] dark:text-gray-500 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 hover:text-[#6B7280] dark:hover:text-gray-300'
     )}
   >
     {icon}
@@ -114,9 +123,22 @@ const SidebarIcon: React.FC<{
 );
 
 const formatDateShort = (date: string | number | undefined | null): string => {
-  if (!date || date === 'null' || date === 'undefined') return 'Set date';
-  const d = new Date(typeof date === 'string' ? (parseInt(date, 10) || date) : date);
-  if (isNaN(d.getTime()) || d.getTime() <= 0) return 'Set date';
+  if (!date || date === 'null' || date === 'undefined' || date === 0) return 'Set date';
+  
+  let d: Date;
+  if (typeof date === 'string') {
+    const parsed = parseInt(date, 10);
+    // Only use parsed number if it's a valid positive timestamp
+    if (!isNaN(parsed) && parsed > 1000000000) {
+      d = new Date(parsed);
+    } else {
+      d = new Date(date);
+    }
+  } else {
+    d = new Date(date);
+  }
+  
+  if (isNaN(d.getTime()) || d.getTime() <= 0 || d.getFullYear() === 1970) return 'Set date';
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
 };
 
@@ -135,20 +157,36 @@ const formatDueDateFull = (date: string | number | undefined | null): string => 
   });
 };
 
-const getPriorityConfig = (priority: any) => {
-  const id = priority?.id?.toString() || priority?.priority?.toLowerCase() || '';
+// Handles both @/types Priority (with 'priority' field) and PopoverPriority (with 'label' field)
+const getPriorityConfig = (priority: Priority | PopoverPriority | null | undefined) => {
+  if (!priority) return { color: '#9CA3AF', label: 'None' };
+
+  // Check for 'priority' field (from @/types) or 'label' field (from popover)
+  const priorityName = ('priority' in priority && priority.priority)
+    ? priority.priority?.toLowerCase()
+    : ('label' in priority ? (priority as PopoverPriority).label?.toLowerCase() : '');
+  const id = priority.id?.toString() || '';
+
   switch (id) {
-    case '1': case 'urgent': return { color: '#EF4444', label: 'Urgent' };
-    case '2': case 'high': return { color: '#F59E0B', label: 'High' };
-    case '3': case 'normal': return { color: '#3B82F6', label: 'Normal' };
-    case '4': case 'low': return { color: '#6B7280', label: 'Low' };
+    case '1': return { color: '#EF4444', label: 'Urgent' };
+    case '2': return { color: '#F59E0B', label: 'High' };
+    case '3': return { color: '#3B82F6', label: 'Normal' };
+    case '4': return { color: '#6B7280', label: 'Low' };
+  }
+
+  // Fallback to name matching
+  switch (priorityName) {
+    case 'urgent': return { color: '#EF4444', label: 'Urgent' };
+    case 'high': return { color: '#F59E0B', label: 'High' };
+    case 'normal': return { color: '#3B82F6', label: 'Normal' };
+    case 'low': return { color: '#6B7280', label: 'Low' };
     default: return { color: '#9CA3AF', label: 'None' };
   }
 };
 
 // Get ETA status colors based on accountability data
 // Priority: 1. status (RED/ORANGE) 2. isExpired 3. <24h warning 4. GREEN/default
-const getEtaStatusColors = (accountability?: any, countdown?: any) => {
+const getEtaStatusColors = (accountability?: TaskAccountability | null, countdown?: CountdownTime | null) => {
   // 1. Check status first (strike-based)
   const status = (accountability?.status || '').toUpperCase();
 
@@ -188,8 +226,8 @@ const CommentInputBar: React.FC<{
   onSubmit: () => void;
   submitting: boolean;
 }> = ({ value, onChange, onSubmit, submitting }) => (
-  <div className="p-3 border-t border-[#ECEDF0] bg-white">
-    <div className="border border-[#E5E7EB] rounded-lg overflow-hidden">
+  <div className="p-3 border-t border-[#ECEDF0] dark:border-gray-700 bg-white dark:bg-gray-900">
+    <div className="border border-[#E5E7EB] dark:border-gray-700 rounded-lg overflow-hidden">
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -200,13 +238,13 @@ const CommentInputBar: React.FC<{
           }
         }}
         placeholder='Comment press "space" for AI, "/" for commands'
-        className="w-full px-3 py-2.5 text-[12px] text-[#1A1A2E] placeholder-[#9CA3AF] resize-none focus:outline-none bg-white"
+        className="w-full px-3 py-2.5 text-[12px] text-[#1A1A2E] dark:text-white placeholder-[#9CA3AF] dark:placeholder-gray-500 resize-none focus:outline-none bg-white dark:bg-gray-800"
         rows={2}
       />
-      <div className="flex items-center justify-between px-3 py-2 bg-white border-t border-[#F3F4F6]">
+      <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800 border-t border-[#F3F4F6] dark:border-gray-700">
         <div className="flex items-center gap-3">
           {[Plus, Smile, Paperclip, AtSign, MessageSquare, Image, Video, Mic].map((Icon, i) => (
-            <button key={i} className="text-[#B0B0B0] hover:text-[#6B7280] transition-colors">
+            <button key={i} className="text-[#B0B0B0] dark:text-gray-500 hover:text-[#6B7280] dark:hover:text-gray-300 transition-colors">
               <Icon className="h-4 w-4" />
             </button>
           ))}
@@ -216,14 +254,14 @@ const CommentInputBar: React.FC<{
           disabled={!value.trim() || submitting}
           className={cn(
             'p-2 rounded-lg transition-colors',
-            value.trim() ? 'bg-[#7C3AED] hover:bg-[#6D28D9] text-white' : 'text-[#C4C4C4]'
+            value.trim() ? 'bg-[#7C3AED] hover:bg-[#6D28D9] text-white' : 'text-[#C4C4C4] dark:text-gray-600'
           )}
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </button>
       </div>
     </div>
-    <p className="text-[10px] text-[#9CA3AF] mt-1.5 text-center">Press Cmd + Enter to send</p>
+    <p className="text-[10px] text-[#9CA3AF] dark:text-gray-500 mt-1.5 text-center">Press Cmd + Enter to send</p>
   </div>
 );
 
@@ -255,7 +293,7 @@ export const TaskDetailModal: React.FC = () => {
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
 
   // Members for AssigneePopover
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<User[]>([]);
 
   // ---- Hooks ----
   const createComment = useCreateComment();
@@ -289,7 +327,7 @@ export const TaskDetailModal: React.FC = () => {
           if (task.time_spent) setTimeTracked(Number(task.time_spent) || 0);
           const timeEntries = await api.getTimeEntries(tid);
           if (Array.isArray(timeEntries) && timeEntries.length > 0) {
-            const total = timeEntries.reduce((s: number, e: any) => s + (parseInt(e.duration) || 0), 0);
+            const total = timeEntries.reduce((s: number, e: TimeEntry) => s + (e.duration || 0), 0);
             if (total > 0) setTimeTracked(total);
           }
         } catch {
@@ -320,7 +358,7 @@ export const TaskDetailModal: React.FC = () => {
         const comments = await api.getTaskComments(taskId);
         if (Array.isArray(comments)) {
           const hashtagSet = new Set<string>();
-          comments.forEach((comment: any) => {
+          comments.forEach((comment: { comment_text?: string; text?: string }) => {
             const text = comment.comment_text || comment.text || '';
             const matches = text.match(/#[\w]+/g) || [];
             matches.forEach((tag: string) => hashtagSet.add(tag.toLowerCase()));
@@ -344,10 +382,10 @@ export const TaskDetailModal: React.FC = () => {
 
   // ---- Handlers ----
   const handleStatusChange = useCallback(
-    async (status: any) => {
+    async (status: Status | string | null) => {
       if (!status || !taskId) return;
       const statusStr = typeof status === 'string' ? status : status.status;
-      updateTask(taskId, { status: typeof status === 'object' ? status : { status: statusStr } });
+      updateTask(taskId, { status: typeof status === 'object' ? status : { status: statusStr, color: '' } });
       try {
         await api.updateTask(taskId, { status: statusStr });
         toast.success('Status updated');
@@ -359,10 +397,20 @@ export const TaskDetailModal: React.FC = () => {
   );
 
   const handlePriorityChange = useCallback(
-    async (priority: any) => {
+    async (priority: Priority | PopoverPriority | null) => {
       if (!taskId) return;
       const priorityId = priority ? Number(priority.id) : null;
-      updateTask(taskId, { priority: priority || undefined });
+
+      // Convert PopoverPriority to @/types Priority format for the store
+      const storePriority: Priority | undefined = priority
+        ? {
+            id: priority.id,
+            priority: 'label' in priority ? priority.label : (priority as Priority).priority,
+            color: priority.color,
+          }
+        : undefined;
+
+      updateTask(taskId, { priority: storePriority });
       try {
         await api.updateTask(taskId, { priority: priorityId });
         toast.success('Priority updated');
@@ -374,14 +422,14 @@ export const TaskDetailModal: React.FC = () => {
   );
 
   const handleAssigneeSelect = useCallback(
-    async (assignee: any) => {
+    async (assignee: User) => {
       if (!taskId) return;
-      const userId = Number(assignee.user?.id || assignee.id);
-      const isSelected = assignees.some((a: any) => (a.id || a.user?.id) == userId);
+      const userId = Number(assignee.id);
+      const isSelected = assignees.some((a: User) => Number(a.id) === userId);
 
       if (isSelected) {
         updateTask(taskId, {
-          assignees: assignees.filter((a: any) => a.id != userId && a.user?.id != userId),
+          assignees: assignees.filter((a: User) => Number(a.id) !== userId),
         });
         try {
           await api.updateTask(taskId, { assignees: { rem: [userId] } });
@@ -390,8 +438,7 @@ export const TaskDetailModal: React.FC = () => {
           toast.error('Failed to remove assignee');
         }
       } else {
-        const user = assignee.user || assignee;
-        updateTask(taskId, { assignees: [...assignees, user] });
+        updateTask(taskId, { assignees: [...assignees, assignee] });
         try {
           await api.updateTask(taskId, { assignees: { add: [userId] } });
           toast.success('Assignee added');
@@ -434,12 +481,12 @@ export const TaskDetailModal: React.FC = () => {
   );
 
   const handleTagSelect = useCallback(
-    (tag: any) => {
+    (tag: Tag) => {
       if (!taskId) return;
-      const isSelected = tags.some((t: any) => t.name === tag.name);
+      const isSelected = tags.some((t: Tag) => t.name === tag.name);
       if (isSelected) {
         api.removeTaskTag(taskId, tag.name).catch(() => toast.error('Failed to remove tag'));
-        updateTask(taskId, { tags: tags.filter((t: any) => t.name !== tag.name) });
+        updateTask(taskId, { tags: tags.filter((t: Tag) => t.name !== tag.name) });
       } else {
         api.addTaskTag(taskId, tag.name).catch(() => toast.error('Failed to add tag'));
         updateTask(taskId, { tags: [...tags, tag] });
@@ -532,23 +579,23 @@ export const TaskDetailModal: React.FC = () => {
 
       <div
         className={cn(
-          'relative bg-white rounded-2xl shadow-2xl flex transition-all duration-300',
+          'relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl flex transition-all duration-300',
           isMaximized
             ? 'w-full h-full max-w-full max-h-full rounded-none m-0'
             : 'w-full max-w-[1100px] max-h-[90vh] mx-4'
         )}
       >
         {/* ==================== LEFT PANEL ==================== */}
-        <div className="w-[480px] flex flex-col border-r border-[#ECEDF0]">
+        <div className="w-[480px] flex flex-col border-r border-[#ECEDF0] dark:border-gray-700">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-[#ECEDF0]">
+          <div className="flex items-center justify-between px-5 py-3 border-b border-[#ECEDF0] dark:border-gray-700">
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-1.5 text-[13px] text-[#5C5C6D] hover:text-[#1A1A2E]">
+              <button className="flex items-center gap-1.5 text-[13px] text-[#5C5C6D] dark:text-gray-400 hover:text-[#1A1A2E] dark:hover:text-white">
                 <div className="w-2 h-2 rounded-full bg-[#7C3AED]" />
                 <span>Tasks</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
-              <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] text-[#8C8C9A] hover:text-[#7C3AED] hover:bg-[#F3F0FF] rounded-lg transition-colors">
+              <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] text-[#8C8C9A] dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-purple-400 hover:bg-[#F3F0FF] dark:hover:bg-purple-900/30 rounded-lg transition-colors">
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Ask AI</span>
               </button>
@@ -590,7 +637,7 @@ export const TaskDetailModal: React.FC = () => {
           <div className="flex-1 overflow-y-auto overflow-x-visible px-5 py-4">
             {/* Title + Countdown Badge */}
             <div className="flex items-start justify-between gap-3 mb-4">
-              <h1 className="text-[22px] font-semibold text-[#1A1A2E] leading-tight">
+              <h1 className="text-[22px] font-semibold text-[#1A1A2E] dark:text-white leading-tight">
                 {task?.name}
               </h1>
               {countdown && (() => {
@@ -615,12 +662,12 @@ export const TaskDetailModal: React.FC = () => {
 
             {/* Countdown Timer Boxes */}
             {countdown && (
-              <div className="bg-[#F8F9FB] rounded-lg p-4 mb-5">
+              <div className="bg-[#F8F9FB] dark:bg-gray-800 rounded-lg p-4 mb-5">
                 {/* Due Date Display */}
                 {task?.due_date && (
-                  <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#E5E7EB]">
-                    <Calendar className="h-4 w-4 text-[#7C3AED]" />
-                    <span className="text-sm font-medium text-[#1A1A2E]">
+                  <div className="flex items-center gap-2 mb-3 pb-3 border-b border-[#E5E7EB] dark:border-gray-700">
+                    <Calendar className="h-4 w-4 text-[#7C3AED] dark:text-purple-400" />
+                    <span className="text-sm font-medium text-[#1A1A2E] dark:text-white">
                       Due: {formatDueDateFull(task.due_date)}
                     </span>
                   </div>
@@ -628,7 +675,7 @@ export const TaskDetailModal: React.FC = () => {
                 <div className="flex items-center gap-6">
                   <div className={cn(
                     "text-[12px] font-medium leading-tight",
-                    countdown.isOverdue ? "text-red-500" : "text-[#6B7280]"
+                    countdown.isOverdue ? "text-red-500" : "text-[#6B7280] dark:text-gray-400"
                   )}>
                     {countdown.isOverdue ? (
                       <>
@@ -646,11 +693,11 @@ export const TaskDetailModal: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-4">
                     <TimeBox value={countdown.days} label="Days" isOverdue={countdown.isOverdue} />
-                    <span className={cn("text-lg", countdown.isOverdue ? "text-red-300" : "text-[#E5E7EB]")}>|</span>
+                    <span className={cn("text-lg", countdown.isOverdue ? "text-red-300" : "text-[#E5E7EB] dark:text-gray-600")}>|</span>
                     <TimeBox value={countdown.hours} label="Hours" isOverdue={countdown.isOverdue} />
-                    <span className={cn("text-lg", countdown.isOverdue ? "text-red-300" : "text-[#E5E7EB]")}>|</span>
+                    <span className={cn("text-lg", countdown.isOverdue ? "text-red-300" : "text-[#E5E7EB] dark:text-gray-600")}>|</span>
                     <TimeBox value={countdown.minutes} label="Minutes" isOverdue={countdown.isOverdue} />
-                    <span className={cn("text-lg", countdown.isOverdue ? "text-red-300" : "text-[#E5E7EB]")}>|</span>
+                    <span className={cn("text-lg", countdown.isOverdue ? "text-red-300" : "text-[#E5E7EB] dark:text-gray-600")}>|</span>
                     <TimeBox value={countdown.seconds} label="Seconds" isOverdue={countdown.isOverdue} />
                   </div>
                 </div>
@@ -666,7 +713,7 @@ export const TaskDetailModal: React.FC = () => {
                     onSelect={handleStatusChange}
                     statuses={currentSpace?.statuses as any}
                   >
-                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] hover:bg-[#F5F5F7] hover:text-[#7C3AED] transition-colors">
+                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 hover:text-[#7C3AED] dark:hover:text-purple-400 transition-colors">
                       {task?.status?.color && (
                         <div
                           className="w-2.5 h-2.5 rounded-full"
@@ -678,16 +725,16 @@ export const TaskDetailModal: React.FC = () => {
                   </StatusPopover>
                 </FieldRow>
 
-                <FieldRow icon={<User className="h-4 w-4" />} label="Assignees">
+                <FieldRow icon={<UserIcon className="h-4 w-4" />} label="Assignees">
                   <AssigneePopover
                     selected={assignees as any}
                     onSelect={handleAssigneeSelect}
                     members={members as any}
                   >
-                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] hover:bg-[#F5F5F7] hover:text-[#7C3AED] transition-colors">
+                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 hover:text-[#7C3AED] dark:hover:text-purple-400 transition-colors">
                       {assignees.length > 0 ? (
                         <div className="flex items-center gap-1.5">
-                          {assignees.slice(0, 3).map((a: any, i: number) => (
+                          {assignees.slice(0, 3).map((a: User, i: number) => (
                             <Avatar
                               key={a.id || i}
                               src={a.profilePicture}
@@ -696,7 +743,7 @@ export const TaskDetailModal: React.FC = () => {
                             />
                           ))}
                           {assignees.length > 3 && (
-                            <span className="text-[11px] text-[#6B7280]">
+                            <span className="text-[11px] text-[#6B7280] dark:text-gray-500">
                               +{assignees.length - 3}
                             </span>
                           )}
@@ -717,9 +764,9 @@ export const TaskDetailModal: React.FC = () => {
                     onStartDateChange={handleStartDateChange}
                     onTimeEstimateChange={() => {}}
                   >
-                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] hover:bg-[#F5F5F7] hover:text-[#7C3AED] transition-colors">
+                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 hover:text-[#7C3AED] dark:hover:text-purple-400 transition-colors">
                       <span>{formatDateShort(task?.start_date)}</span>
-                      <span className="text-[#D1D5DB]">→</span>
+                      <span className="text-[#D1D5DB] dark:text-gray-600">→</span>
                       <span>{formatDateShort(task?.due_date)}</span>
                     </button>
                   </DueDatePopover>
@@ -727,7 +774,7 @@ export const TaskDetailModal: React.FC = () => {
 
                 <FieldRow icon={<Flag className="h-4 w-4" />} label="Priority">
                   <PriorityPopover selected={task?.priority as any} onSelect={handlePriorityChange}>
-                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] hover:bg-[#F5F5F7] hover:text-[#7C3AED] transition-colors">
+                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 hover:text-[#7C3AED] dark:hover:text-purple-400 transition-colors">
                       <Flag className="h-3.5 w-3.5" style={{ color: priorityConfig.color }} />
                       <span>{priorityConfig.label}</span>
                     </button>
@@ -750,23 +797,28 @@ export const TaskDetailModal: React.FC = () => {
                     selected={tags as any}
                     onSelect={handleTagSelect}
                   >
-                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] hover:bg-[#F5F5F7] hover:text-[#7C3AED] transition-colors">
+                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 hover:text-[#7C3AED] dark:hover:text-purple-400 transition-colors">
                       {tags.length > 0 ? (
                         <div className="flex items-center gap-1.5">
-                          {tags.slice(0, 3).map((tag: any) => (
-                            <span
-                              key={tag.name}
-                              className="px-2 py-0.5 rounded text-[11px] font-medium"
-                              style={{
-                                backgroundColor: tag.tag_bg || tag.color || '#5B4FD1',
-                                color: tag.tag_fg || '#FFFFFF',
-                              }}
-                            >
-                              {tag.name}
-                            </span>
-                          ))}
+                          {tags.slice(0, 3).map((tag: Tag, index: number) => {
+                            // Handle different tag name properties from API (name, tag, or label)
+                            const tagAny = tag as unknown as Record<string, string>;
+                            const tagName = tag.name || tagAny.tag || 'Tag';
+                            return (
+                              <span
+                                key={`${tagName}-${index}`}
+                                className="px-2 py-0.5 rounded text-[11px] font-medium"
+                                style={{
+                                  backgroundColor: tag.tag_bg || tag.color || '#5B4FD1',
+                                  color: tag.tag_fg || '#FFFFFF',
+                                }}
+                              >
+                                {tagName}
+                              </span>
+                            );
+                          })}
                           {tags.length > 3 && (
-                            <span className="text-[11px] text-[#9CA3AF]">+{tags.length - 3}</span>
+                            <span className="text-[11px] text-[#9CA3AF] dark:text-gray-500">+{tags.length - 3}</span>
                           )}
                         </div>
                       ) : (
@@ -781,7 +833,7 @@ export const TaskDetailModal: React.FC = () => {
             {/* Hashtags Section - Click to open chat filtered by hashtag */}
             <div className="mb-5">
               <div className="flex items-center justify-between py-2">
-                <span className="text-[13px] font-medium text-[#1A1A2E]">Hashtags</span>
+                <span className="text-[13px] font-medium text-[#1A1A2E] dark:text-white">Hashtags</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {extractedHashtags.length > 0 ? (
@@ -792,13 +844,13 @@ export const TaskDetailModal: React.FC = () => {
                         setHashtagFilter(hashtag);
                         setActiveRightTab('hashtags');
                       }}
-                      className="px-3 py-1.5 rounded-full text-[12px] font-medium bg-[#F3F0FF] text-[#7C3AED] hover:bg-[#E9E3FF] transition-colors"
+                      className="px-3 py-1.5 rounded-full text-[12px] font-medium bg-[#F3F0FF] dark:bg-purple-900/30 text-[#7C3AED] dark:text-purple-400 hover:bg-[#E9E3FF] dark:hover:bg-purple-900/50 transition-colors"
                     >
                       {hashtag}
                     </button>
                   ))
                 ) : (
-                  <span className="text-[13px] text-[#9CA3AF]">No hashtags yet</span>
+                  <span className="text-[13px] text-[#9CA3AF] dark:text-gray-500">No hashtags yet</span>
                 )}
               </div>
             </div>
@@ -809,17 +861,17 @@ export const TaskDetailModal: React.FC = () => {
         </div>
 
         {/* ==================== RIGHT PANEL ==================== */}
-        <div className="flex-1 flex flex-col bg-white">
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#ECEDF0]">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E7EB] rounded-lg text-[12px] text-[#5C5C6D] hover:bg-[#F5F5F7]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#ECEDF0] dark:border-gray-700">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E7EB] dark:border-gray-600 rounded-lg text-[12px] text-[#5C5C6D] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700">
               <Check className="h-3.5 w-3.5" />
               Mark complete
             </button>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setIsMaximized(!isMaximized)}
-                className="p-2 hover:bg-[#F5F5F7] text-[#9CA3AF] hover:text-[#6B7280] rounded-lg transition-colors"
+                className="p-2 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 text-[#9CA3AF] dark:text-gray-500 hover:text-[#6B7280] dark:hover:text-gray-300 rounded-lg transition-colors"
                 title={isMaximized ? 'Minimize' : 'Maximize'}
               >
                 {isMaximized ? (
@@ -838,12 +890,12 @@ export const TaskDetailModal: React.FC = () => {
           </div>
 
           {/* Privacy Notice */}
-          <div className="flex items-center justify-between px-4 py-2 bg-[#FAFBFC] border-b border-[#ECEDF0]">
-            <div className="flex items-center gap-1.5 text-[11px] text-[#6B7280]">
+          <div className="flex items-center justify-between px-4 py-2 bg-[#FAFBFC] dark:bg-gray-800 border-b border-[#ECEDF0] dark:border-gray-700">
+            <div className="flex items-center gap-1.5 text-[11px] text-[#6B7280] dark:text-gray-400">
               <Lock className="h-3.5 w-3.5" />
               <span>This task is private to you.</span>
             </div>
-            <button className="text-[11px] text-[#7C3AED] font-medium hover:underline">
+            <button className="text-[11px] text-[#7C3AED] dark:text-purple-400 font-medium hover:underline">
               Make public
             </button>
           </div>
@@ -857,23 +909,26 @@ export const TaskDetailModal: React.FC = () => {
               {activeRightTab === 'documents' && <LinksPanel taskId={taskId} />}
               {activeRightTab === 'comments' && <CommentsPanel taskId={taskId} />}
 
-              <CommentInputBar
-                value={comment}
-                onChange={setComment}
-                onSubmit={handleSubmitComment}
-                submitting={submittingComment}
-              />
+              {/* Only show CommentInputBar for panels that don't have their own input */}
+              {(activeRightTab === 'activity' || activeRightTab === 'documents') && (
+                <CommentInputBar
+                  value={comment}
+                  onChange={setComment}
+                  onSubmit={handleSubmitComment}
+                  submitting={submittingComment}
+                />
+              )}
             </div>
 
             {/* Right Sidebar Icons */}
-            <div className="w-14 flex flex-col items-center py-3 gap-1 border-l border-[#ECEDF0] bg-[#FAFBFC]">
+            <div className="w-14 flex flex-col items-center py-3 gap-1 border-l border-[#ECEDF0] dark:border-gray-700 bg-[#FAFBFC] dark:bg-gray-800">
               <SidebarIcon
                 icon={<FileText className="h-4 w-4" />}
                 active={activeRightTab === 'activity'}
                 onClick={() => setActiveRightTab('activity')}
                 label="Activity"
               />
-              <div className="w-8 border-t border-[#ECEDF0] my-2" />
+              <div className="w-8 border-t border-[#ECEDF0] dark:border-gray-700 my-2" />
               <SidebarIcon
                 icon={<Hash className="h-4 w-4" />}
                 active={activeRightTab === 'hashtags'}

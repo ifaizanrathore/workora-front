@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   X,
   ChevronLeft,
@@ -63,12 +63,42 @@ interface FieldConfig {
   };
 }
 
+type AutomationKey = 'autofillOnCreate' | 'autofillOnChange' | 'autofillExisting';
+
 const formatOptions = [
   'Plain Text',
   'Bulleted List',
   'Numbered List',
   'Paragraph',
   'Rich Text',
+] as const;
+
+const AUTOMATION_OPTIONS: Array<{ key: AutomationKey; label: string }> = [
+  { key: 'autofillOnCreate', label: 'Auto-fill when tasks are created' },
+  { key: 'autofillOnChange', label: 'Update when task changes' },
+  { key: 'autofillExisting', label: 'Fill existing tasks' },
+];
+
+const INITIAL_FIELDS: Field[] = [
+  // Basic Fields
+  { id: 'status', label: 'Status', icon: Circle, visible: true, description: 'Track task progress', category: 'basic' },
+  { id: 'priority', label: 'Priority', icon: Flag, visible: true, description: 'Set importance level', category: 'basic' },
+  { id: 'dueDate', label: 'Due Date', icon: Calendar, visible: true, description: 'Task deadline', category: 'basic' },
+  { id: 'assignee', label: 'Assignee', icon: Users, visible: true, description: 'Assign team members', category: 'basic' },
+  { id: 'tags', label: 'Tags', icon: Tag, visible: true, description: 'Categorize with labels', category: 'basic' },
+  // Advanced Fields
+  { id: 'timeEstimate', label: 'Time Estimate', icon: Clock, visible: false, description: 'Estimated duration', category: 'advanced' },
+  { id: 'startDate', label: 'Start Date', icon: Calendar, visible: false, description: 'When to begin', category: 'advanced' },
+  { id: 'checklist', label: 'Checklist', icon: CheckSquare, visible: false, description: 'Subtask items', category: 'advanced' },
+  { id: 'watcher', label: 'Watchers', icon: Eye, visible: false, description: 'Track updates', category: 'advanced' },
+  { id: 'dependency', label: 'Dependencies', icon: Link2, visible: false, description: 'Link related tasks', category: 'advanced' },
+  { id: 'recurring', label: 'Recurring', icon: RotateCw, visible: false, description: 'Repeat on schedule', category: 'advanced' },
+  { id: 'attachments', label: 'Attachments', icon: Paperclip, visible: false, description: 'Add files', category: 'advanced' },
+  // Custom Fields
+  { id: 'text', label: 'Text Field', icon: Type, visible: false, description: 'Single line text', category: 'custom' },
+  { id: 'textarea', label: 'Long Text', icon: AlignLeft, visible: false, description: 'Multi-line text', category: 'custom' },
+  { id: 'number', label: 'Number', icon: Hash, visible: false, description: 'Numeric values', category: 'custom' },
+  { id: 'dropdown', label: 'Dropdown', icon: ListTodo, visible: false, description: 'Select options', category: 'custom' },
 ];
 
 const FieldConfigModal: React.FC<FieldConfigModalProps> = ({
@@ -88,6 +118,7 @@ const FieldConfigModal: React.FC<FieldConfigModalProps> = ({
     autofillExisting: true,
   });
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   if (!isOpen || !field) return null;
 
@@ -99,25 +130,18 @@ const FieldConfigModal: React.FC<FieldConfigModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center">
-                <Icon className="h-4 w-4 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{field.label}</h3>
-                <p className="text-xs text-gray-500">Configure field settings</p>
-              </div>
+            <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center">
+              <Icon className="h-4 w-4 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">{field.label}</h3>
+              <p className="text-xs text-gray-500">Configure field settings</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Close field configuration"
           >
             <X className="h-5 w-5" />
           </button>
@@ -128,15 +152,27 @@ const FieldConfigModal: React.FC<FieldConfigModalProps> = ({
           {/* Field Name & Format */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-gray-700" htmlFor="field-name">
                 Field name <span className="text-red-500">*</span>
               </label>
               <input
+                id="field-name"
                 type="text"
                 value={fieldName}
-                onChange={(e) => setFieldName(e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all"
+                onChange={(e) => {
+                  setFieldName(e.target.value);
+                  if (e.target.value.trim()) setValidationError(null);
+                }}
+                className={cn(
+                  'w-full px-4 py-2.5 border-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all',
+                  validationError ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' : 'border-gray-200 focus:border-purple-500 focus:ring-purple-500/10'
+                )}
+                aria-invalid={!!validationError}
+                aria-describedby={validationError ? 'field-name-error' : undefined}
               />
+              {validationError && (
+                <p id="field-name-error" className="text-xs text-red-600">{validationError}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -196,29 +232,26 @@ const FieldConfigModal: React.FC<FieldConfigModalProps> = ({
           <div className="space-y-3">
             <label className="text-sm font-medium text-gray-700">Automations</label>
             <div className="space-y-2">
-              {[
-                { key: 'autofillOnCreate', label: 'Auto-fill when tasks are created' },
-                { key: 'autofillOnChange', label: 'Update when task changes' },
-                { key: 'autofillExisting', label: 'Fill existing tasks' },
-              ].map(({ key, label }) => (
+              {AUTOMATION_OPTIONS.map(({ key, label }) => (
                 <button
                   key={key}
-                  onClick={() => setAutomations(prev => ({ ...prev, [key]: !prev[key as keyof typeof automations] }))}
+                  onClick={() => setAutomations(prev => ({ ...prev, [key]: !prev[key] }))}
                   className={cn(
                     'flex items-center gap-3 w-full px-4 py-3 rounded-xl border-2 text-sm transition-all text-left',
-                    automations[key as keyof typeof automations]
+                    automations[key]
                       ? 'border-purple-500 bg-purple-50 text-purple-700'
                       : 'border-gray-200 text-gray-600 hover:border-gray-300'
                   )}
+                  aria-pressed={automations[key]}
                 >
                   <div className={cn(
                     'w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all',
-                    automations[key as keyof typeof automations]
+                    automations[key]
                       ? 'border-purple-500 bg-purple-500'
                       : 'border-gray-300'
                   )}>
-                    {automations[key as keyof typeof automations] && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    {automations[key] && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -246,10 +279,15 @@ const FieldConfigModal: React.FC<FieldConfigModalProps> = ({
           </button>
           <button
             onClick={() => {
+              if (!fieldName.trim()) {
+                setValidationError('Field name is required');
+                return;
+              }
               onSave({ fieldName, format, aiPrompt, automations });
               onClose();
             }}
-            className="px-5 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors shadow-sm"
+            className="px-5 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!fieldName.trim()}
           >
             Save Field
           </button>
@@ -268,30 +306,10 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
   const [setAsDefault, setSetAsDefault] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [configField, setConfigField] = useState<Field | null>(null);
-  const [fields, setFields] = useState<Field[]>([
-    // Basic Fields
-    { id: 'status', label: 'Status', icon: Circle, visible: true, description: 'Track task progress', category: 'basic' },
-    { id: 'priority', label: 'Priority', icon: Flag, visible: true, description: 'Set importance level', category: 'basic' },
-    { id: 'dueDate', label: 'Due Date', icon: Calendar, visible: true, description: 'Task deadline', category: 'basic' },
-    { id: 'assignee', label: 'Assignee', icon: Users, visible: true, description: 'Assign team members', category: 'basic' },
-    { id: 'tags', label: 'Tags', icon: Tag, visible: true, description: 'Categorize with labels', category: 'basic' },
-    // Advanced Fields
-    { id: 'timeEstimate', label: 'Time Estimate', icon: Clock, visible: false, description: 'Estimated duration', category: 'advanced' },
-    { id: 'startDate', label: 'Start Date', icon: Calendar, visible: false, description: 'When to begin', category: 'advanced' },
-    { id: 'checklist', label: 'Checklist', icon: CheckSquare, visible: false, description: 'Subtask items', category: 'advanced' },
-    { id: 'watcher', label: 'Watchers', icon: Eye, visible: false, description: 'Track updates', category: 'advanced' },
-    { id: 'dependency', label: 'Dependencies', icon: Link2, visible: false, description: 'Link related tasks', category: 'advanced' },
-    { id: 'recurring', label: 'Recurring', icon: RotateCw, visible: false, description: 'Repeat on schedule', category: 'advanced' },
-    { id: 'attachments', label: 'Attachments', icon: Paperclip, visible: false, description: 'Add files', category: 'advanced' },
-    // Custom Fields
-    { id: 'text', label: 'Text Field', icon: Type, visible: false, description: 'Single line text', category: 'custom' },
-    { id: 'textarea', label: 'Long Text', icon: AlignLeft, visible: false, description: 'Multi-line text', category: 'custom' },
-    { id: 'number', label: 'Number', icon: Hash, visible: false, description: 'Numeric values', category: 'custom' },
-    { id: 'dropdown', label: 'Dropdown', icon: ListTodo, visible: false, description: 'Select options', category: 'custom' },
-  ]);
+  const [fields, setFields] = useState<Field[]>(INITIAL_FIELDS);
 
-  const toggleFieldVisibility = (id: string) => {
-    setFields(fields.map(field => {
+  const toggleFieldVisibility = useCallback((id: string) => {
+    setFields(prevFields => prevFields.map(field => {
       if (field.id === id) {
         const newVisible = !field.visible;
         onFieldToggle?.(id, newVisible);
@@ -299,25 +317,29 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
       }
       return field;
     }));
-  };
+  }, [onFieldToggle]);
 
-  const openFieldConfig = (field: Field) => {
+  const openFieldConfig = useCallback((field: Field) => {
     setConfigField(field);
-  };
+  }, []);
 
-  const filteredFields = fields.filter(field =>
-    field.label.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const { filteredFields, basicFields, advancedFields, customFields, visibleCount } = useMemo(() => {
+    const filtered = fields.filter(field =>
+      field.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
-  const basicFields = filteredFields.filter(f => f.category === 'basic');
-  const advancedFields = filteredFields.filter(f => f.category === 'advanced');
-  const customFields = filteredFields.filter(f => f.category === 'custom');
-
-  const visibleCount = fields.filter(f => f.visible).length;
+    return {
+      filteredFields: filtered,
+      basicFields: filtered.filter(f => f.category === 'basic'),
+      advancedFields: filtered.filter(f => f.category === 'advanced'),
+      customFields: filtered.filter(f => f.category === 'custom'),
+      visibleCount: fields.filter(f => f.visible).length,
+    };
+  }, [fields, searchQuery]);
 
   if (!isOpen) return null;
 
-  const FieldItem = ({ field }: { field: Field }) => {
+  const FieldItem = React.memo(({ field }: { field: Field }) => {
     const Icon = field.icon;
     return (
       <div
@@ -365,18 +387,20 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
               ? 'bg-purple-200 text-purple-700 hover:bg-purple-300'
               : 'text-gray-400 hover:bg-gray-200 hover:text-gray-600'
           )}
+          aria-label={field.visible ? `Hide ${field.label}` : `Show ${field.label}`}
+          aria-pressed={field.visible}
         >
           {field.visible ? (
-            <Eye className="h-4 w-4" />
+            <Eye className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <EyeOff className="h-4 w-4" />
+            <EyeOff className="h-4 w-4" aria-hidden="true" />
           )}
         </button>
       </div>
     );
-  };
+  });
 
-  const FieldSection = ({ title, fields }: { title: string; fields: Field[] }) => {
+  const FieldSection = React.memo(({ title, fields }: { title: string; fields: Field[] }) => {
     if (fields.length === 0) return null;
     return (
       <div className="space-y-2">
@@ -390,7 +414,7 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
         </div>
       </div>
     );
-  };
+  });
 
   return (
     <>
@@ -410,6 +434,7 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
             <button
               onClick={onClose}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Close field management"
             >
               <X className="h-5 w-5" />
             </button>
@@ -425,6 +450,7 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search fields..."
                 className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all"
+                aria-label="Search fields"
               />
             </div>
           </div>
@@ -441,12 +467,16 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
                 'relative w-12 h-7 rounded-full transition-colors',
                 setAsDefault ? 'bg-purple-600' : 'bg-gray-300'
               )}
+              role="switch"
+              aria-checked={setAsDefault}
+              aria-label="Set field configuration as default for all new tasks"
             >
               <div
                 className={cn(
                   'absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform shadow-sm',
                   setAsDefault && 'translate-x-5'
                 )}
+                aria-hidden="true"
               />
             </button>
           </div>
@@ -474,6 +504,7 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
                 setFields(fields.map(f => ({ ...f, visible: false })));
               }}
               className="text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+              aria-label="Hide all fields"
             >
               Hide all
             </button>
@@ -483,6 +514,7 @@ export const ChooseFieldModal: React.FC<ChooseFieldModalProps> = ({
                   setFields(fields.map(f => f.category === 'basic' ? { ...f, visible: true } : { ...f, visible: false }));
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                aria-label="Reset to default field configuration"
               >
                 Reset
               </button>

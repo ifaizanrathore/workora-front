@@ -497,6 +497,198 @@ export const SkeletonSettingsPage: React.FC = () => (
 );
 
 // ============================================================
+// CREATE TASK MODAL SKELETON
+// ============================================================
+
+export const SkeletonCreateTaskForm: React.FC = () => (
+  <div className="space-y-5">
+    {/* List Selector */}
+    <div className="flex items-center gap-2">
+      <Skeleton className="h-4 w-4 rounded" />
+      <Skeleton className="h-4 w-8" />
+      <Skeleton className="h-8 w-32 rounded-lg" />
+    </div>
+
+    {/* Task Name Input */}
+    <div>
+      <Skeleton className="h-4 w-20 mb-2" />
+      <Skeleton className="h-12 w-full rounded-xl" />
+    </div>
+
+    {/* Description Button */}
+    <div className="flex items-center gap-2">
+      <Skeleton className="h-4 w-4 rounded" />
+      <Skeleton className="h-4 w-24" />
+    </div>
+
+    {/* Task Details Label */}
+    <Skeleton className="h-4 w-20" />
+
+    {/* Field Buttons Row */}
+    <div className="flex flex-wrap gap-2">
+      <Skeleton className="h-10 w-24 rounded-lg" />
+      <Skeleton className="h-10 w-24 rounded-lg" />
+      <Skeleton className="h-10 w-28 rounded-lg" />
+      <Skeleton className="h-10 w-24 rounded-lg" />
+      <Skeleton className="h-10 w-20 rounded-lg" />
+      <Skeleton className="h-10 w-10 rounded-lg" />
+    </div>
+  </div>
+);
+
+// ============================================================
+// PANEL SKELETONS (Activity, Comments, Hashtags)
+// ============================================================
+
+export const SkeletonActivityPanel: React.FC<{ items?: number }> = ({ items = 6 }) => (
+  <div className="flex flex-col h-full">
+    {/* Header */}
+    <div className="px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-5 w-20" />
+        </div>
+        <Skeleton className="h-6 w-16 rounded-full" />
+      </div>
+    </div>
+
+    {/* Activity Items */}
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {Array.from({ length: items }).map((_, i) => (
+        <div key={i} className="flex gap-3">
+          <SkeletonAvatar size="sm" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+            <Skeleton className="h-4 w-full" />
+            {i % 2 === 0 && <Skeleton className="h-4 w-3/4 mt-1" />}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+export const SkeletonCommentsPanel: React.FC<{ items?: number }> = ({ items = 5 }) => (
+  <div className="flex flex-col h-full">
+    {/* Header */}
+    <div className="px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-5 w-5 rounded" />
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-4 w-8 rounded-full" />
+      </div>
+    </div>
+
+    {/* Comments */}
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {Array.from({ length: items }).map((_, i) => (
+        <div key={i} className={cn('flex gap-3', i % 3 === 0 ? 'flex-row-reverse' : '')}>
+          <SkeletonAvatar size="sm" />
+          <div className={cn('flex-1 max-w-[80%]', i % 3 === 0 ? 'text-right' : '')}>
+            <div className="flex items-center gap-2 mb-1">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+            <Skeleton
+              className={cn(
+                'h-16 rounded-xl',
+                i % 3 === 0 ? 'bg-purple-100' : 'bg-gray-100'
+              )}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Input */}
+    <div className="p-3 border-t border-gray-100">
+      <Skeleton className="h-20 w-full rounded-lg" />
+    </div>
+  </div>
+);
+
+export const SkeletonHashtagsPanel: React.FC = () => (
+  <div className="flex flex-col h-full">
+    {/* Header */}
+    <div className="px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-5 w-20" />
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <Skeleton className="h-6 w-14 rounded" />
+      </div>
+    </div>
+
+    {/* Search */}
+    <div className="px-4 py-3">
+      <Skeleton className="h-9 w-full rounded-lg" />
+    </div>
+
+    {/* Hashtag Pills */}
+    <div className="px-4 pb-3">
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-7 w-20 rounded-full" />
+        ))}
+      </div>
+    </div>
+
+    {/* Filtered Messages */}
+    <div className="flex-1 overflow-y-auto px-4 space-y-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex gap-3">
+          <SkeletonAvatar size="sm" />
+          <div className="flex-1">
+            <Skeleton className="h-3 w-24 mb-1" />
+            <Skeleton className="h-12 w-full rounded-lg" />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Input */}
+    <div className="p-3 border-t border-gray-100">
+      <Skeleton className="h-16 w-full rounded-lg" />
+    </div>
+  </div>
+);
+
+export const SkeletonLinksPanel: React.FC = () => (
+  <div className="flex flex-col h-full">
+    {/* Header */}
+    <div className="px-4 py-3 border-b border-gray-100">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5 rounded" />
+          <Skeleton className="h-5 w-28" />
+        </div>
+        <Skeleton className="h-8 w-20 rounded-lg" />
+      </div>
+    </div>
+
+    {/* Links */}
+    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg">
+          <Skeleton className="h-10 w-10 rounded" />
+          <div className="flex-1">
+            <Skeleton className="h-4 w-3/4 mb-1" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+          <Skeleton className="h-8 w-8 rounded" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// ============================================================
 // LOADING WRAPPER COMPONENT
 // ============================================================
 

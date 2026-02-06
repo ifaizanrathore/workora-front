@@ -65,8 +65,9 @@ export default function DashboardLayout({
     }
   }, [error, router]);
 
-  // Still checking for token or loading profile
-  if (hasToken === null || (profileLoading && !user) || hasToken === false) {
+  // Still checking for token, loading profile, or waiting to start fetching
+  const isReady = user || profile;
+  if (!isReady && (hasToken === null || hasToken === false || profileLoading || shouldFetchProfile)) {
     return (
       <div className="relative">
         <SkeletonDashboardPage />

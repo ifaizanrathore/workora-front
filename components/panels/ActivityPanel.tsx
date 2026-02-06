@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Lock, Globe, Loader2 } from 'lucide-react';
+import { Lock, Globe } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatTimeAgo } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SkeletonActivityPanel } from '@/components/ui/skeleton';
 
 interface ActivityPanelProps {
   taskId: string;
@@ -49,35 +50,97 @@ export const ActivityPanel: React.FC<ActivityPanelProps> = ({ taskId }) => {
     fetchActivity();
   }, [taskId]);
 
+  // Format a value based on its field type
+  const formatValue = (value: any, field: string): string => {
+    if (value === null || value === undefined) return '';
+
+    // Handle different field types
+    switch (field) {
+      case 'status':
+        if (typeof value === 'object') {
+          return value.status || value.name || 'Unknown';
+        }
+        return String(value);
+
+      case 'priority':
+        if (typeof value === 'object') {
+          return value.priority || value.label || value.name || 'None';
+        }
+        // Map priority IDs to names
+        const priorityMap: Record<string, string> = { '1': 'Urgent', '2': 'High', '3': 'Normal', '4': 'Low' };
+        return priorityMap[String(value)] || String(value);
+
+      case 'assignees':
+        if (Array.isArray(value)) {
+          return value.map((a: any) => a.username || a.email || 'User').join(', ') || 'No assignees';
+        }
+        if (typeof value === 'object') {
+          return value.username || value.email || 'User';
+        }
+        return String(value);
+
+      case 'due_date':
+      case 'start_date':
+      case 'date':
+        // Handle timestamp (number or numeric string)
+        const timestamp = typeof value === 'string' ? parseInt(value, 10) : value;
+        if (!isNaN(timestamp) && timestamp > 1000000000) {
+          const date = new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000);
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        // Try parsing as date string
+        const dateObj = new Date(value);
+        if (!isNaN(dateObj.getTime())) {
+          return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        return String(value);
+
+      case 'tags':
+        if (Array.isArray(value)) {
+          return value.map((t: any) => t.name || t.tag || t).join(', ');
+        }
+        if (typeof value === 'object') {
+          return value.name || value.tag || 'Tag';
+        }
+        return String(value);
+
+      default:
+        if (typeof value === 'object') {
+          // Try common property names
+          return value.name || value.status || value.label || value.title || JSON.stringify(value);
+        }
+        return String(value);
+    }
+  };
+
   const formatActivityMessage = (activity: ActivityItem): string => {
     const field = activity.field || 'task';
     const userName = activity.user?.username || 'Someone';
 
+    const beforeFormatted = formatValue(activity.before, field);
+    const afterFormatted = formatValue(activity.after, field);
+
     if (activity.before === null && activity.after !== null) {
-      return `${userName} set ${field} to "${activity.after}"`;
+      return `${userName} set ${field} to "${afterFormatted}"`;
     }
     if (activity.before !== null && activity.after === null) {
       return `${userName} removed ${field}`;
     }
     if (activity.before !== null && activity.after !== null) {
-      return `${userName} changed ${field} from "${activity.before}" to "${activity.after}"`;
+      return `${userName} changed ${field} from "${beforeFormatted}" to "${afterFormatted}"`;
     }
     return `${userName} updated ${field}`;
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <Loader2 className="h-6 w-6 animate-spin text-[#7C3AED]" />
-      </div>
-    );
+    return <SkeletonActivityPanel />;
   }
 
   return (
     <div className="flex flex-col h-full">
       {/* Activity Header */}
       <div className="px-4 py-4">
-        <h3 className="text-xl font-bold text-[#1A1A2E]">Activity</h3>
+        <h3 className="text-xl font-bold text-[#1A1A2E] dark:text-white">Activity</h3>
       </div>
 
       {/* Activity List */}
@@ -91,17 +154,17 @@ export const ActivityPanel: React.FC<ActivityPanelProps> = ({ taskId }) => {
                 size="sm"
               />
               <div className="flex-1">
-                <p className="text-sm text-[#6B7280]">
+                <p className="text-sm text-[#6B7280] dark:text-gray-400">
                   {formatActivityMessage(activity)}
                 </p>
               </div>
-              <span className="text-xs text-[#9CA3AF] whitespace-nowrap">
+              <span className="text-xs text-[#9CA3AF] dark:text-gray-500 whitespace-nowrap">
                 {activity.date ? formatTimeAgo(activity.date) : ''}
               </span>
             </div>
           ))
         ) : (
-          <div className="text-center py-8 text-[#9CA3AF]">
+          <div className="text-center py-8 text-[#9CA3AF] dark:text-gray-500">
             <p>No activity yet</p>
           </div>
         )}

@@ -3,6 +3,7 @@
 import React, { useState, createContext, useContext, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 // ============================================================
 // LOADING CONTEXT
@@ -87,19 +88,20 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LoadingContext.Provider
-        value={{
-          isPageLoading,
-          loadingMessage,
-          setPageLoading,
-          startLoading,
-          stopLoading,
-        }}
-      >
-        {children}
-        
-        {/* Toast Notifications */}
-        <Toaster
+      <ThemeProvider defaultTheme="system">
+        <LoadingContext.Provider
+          value={{
+            isPageLoading,
+            loadingMessage,
+            setPageLoading,
+            startLoading,
+            stopLoading,
+          }}
+        >
+          {children}
+
+          {/* Toast Notifications */}
+          <Toaster
           position="top-right"
           toastOptions={{
             duration: 4000,
@@ -124,7 +126,8 @@ export const Providers: React.FC<ProvidersProps> = ({ children }) => {
             },
           }}
         />
-      </LoadingContext.Provider>
+        </LoadingContext.Provider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

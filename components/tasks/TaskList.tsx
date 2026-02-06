@@ -108,7 +108,7 @@ const ViewTabs: React.FC<{ current: string; onChange: (v: string) => void }> = (
             onClick={() => onChange(t.id)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors relative',
-              active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
+              active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             )}
           >
             <Icon className="h-4 w-4" />
@@ -117,7 +117,7 @@ const ViewTabs: React.FC<{ current: string; onChange: (v: string) => void }> = (
           </button>
         );
       })}
-      <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
+      <button className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
         <Plus className="h-4 w-4" />
         View
       </button>
@@ -140,11 +140,11 @@ const TopToolbar: React.FC<{
   onViewChange: (v: string) => void;
 }> = ({ listName, onAddTask, showSearch, onSearchToggle, showHidePanel, onHideToggle, currentView, onViewChange }) => {
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
+    <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold text-gray-900">{listName}</h1>
-          <button className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">{listName}</h1>
+          <button className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors">
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </div>
@@ -153,19 +153,19 @@ const TopToolbar: React.FC<{
       <div className="flex items-center gap-1.5">
         <button
           onClick={onSearchToggle}
-          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showSearch ? 'text-purple-600 bg-purple-50' : 'text-gray-600 hover:bg-gray-100')}
+          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showSearch ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">Search</span>
         </button>
         <button
           onClick={onHideToggle}
-          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showHidePanel ? 'text-purple-600 bg-purple-50' : 'text-gray-600 hover:bg-gray-100')}
+          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showHidePanel ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}
         >
           <SlidersHorizontal className="h-4 w-4" />
           <span className="hidden sm:inline">Hide</span>
         </button>
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
           <Settings className="h-4 w-4" />
           <span className="hidden sm:inline">Customize</span>
         </button>
@@ -215,25 +215,25 @@ const FilterRow: React.FC<{
   const currentLabel = groupOpts.find((g) => g.id === groupBy)?.label || 'Status';
 
   return (
-    <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-200 bg-gray-50/50">
+    <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 transition-colors">
       <div className="flex items-center gap-1.5">
         {/* Group */}
         <div className="relative" ref={ref}>
           <button
             onClick={() => setShowGroupDD(!showGroupDD)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <ListTree className="h-3.5 w-3.5 text-gray-400" />
             Group: {currentLabel}
             <ChevronDown className={cn('h-3 w-3 text-gray-400 transition-transform', showGroupDD && 'rotate-180')} />
           </button>
           {showGroupDD && (
-            <div className="absolute top-full left-0 mt-1 w-36 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+            <div className="absolute top-full left-0 mt-1 w-36 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 py-1 z-50">
               {groupOpts.map((o) => (
                 <button
                   key={o.id}
                   onClick={() => { onGroupByChange(o.id); setShowGroupDD(false); }}
-                  className={cn('flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-gray-50', groupBy === o.id && 'text-purple-600 bg-purple-50')}
+                  className={cn('flex items-center justify-between w-full px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700', groupBy === o.id && 'text-purple-600 bg-purple-50 dark:bg-purple-900/30')}
                 >
                   {o.label}
                   {groupBy === o.id && <Check className="h-3.5 w-3.5" />}
@@ -243,27 +243,27 @@ const FilterRow: React.FC<{
           )}
         </div>
 
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
           <ListTree className="h-3.5 w-3.5 text-gray-400" />
           Subtasks
         </button>
       </div>
 
       <div className="flex items-center gap-1.5">
-        <button className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', filterCount > 0 ? 'text-purple-600 bg-purple-50 border-purple-200' : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50')}>
+        <button className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', filterCount > 0 ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700' : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700')}>
           <Filter className="h-3.5 w-3.5" />
           {filterCount > 0 ? `${filterCount} Filter` : 'Filter'}
         </button>
 
         <button
           onClick={onToggleClosed}
-          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', showClosed ? 'text-purple-600 bg-purple-50 border-purple-200' : 'text-gray-700 bg-white border-gray-200 hover:bg-gray-50')}
+          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', showClosed ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700' : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700')}
         >
           <Check className="h-3.5 w-3.5" />
           Closed
         </button>
 
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 transition-colors">
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
           <Users className="h-3.5 w-3.5 text-gray-400" />
           Assignee
         </button>
@@ -277,7 +277,7 @@ const FilterRow: React.FC<{
               value={searchQuery}
               onChange={(e) => onSearch(e.target.value)}
               autoFocus
-              className="w-44 h-8 pl-8 pr-8 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+              className="w-44 h-8 pl-8 pr-8 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
             />
             {searchQuery && (
               <button onClick={() => onSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -305,16 +305,16 @@ const TaskGroupHeader: React.FC<{
   const totalW = columns.filter((c) => c.visible).reduce((s, c) => s + c.width, 0) + 96;
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-pointer hover:bg-gray-100/80 transition-colors group/gh"
+      className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100/80 dark:hover:bg-gray-700/80 transition-colors group/gh"
       onClick={onToggle}
       style={{ minWidth: totalW }}
     >
       {isCollapsed ? <ChevronRight className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
       <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: group.color || '#9CA3AF' }} />
-      <span className="text-sm font-semibold text-gray-700 capitalize">{group.name}</span>
-      <span className="text-[10px] font-bold text-gray-400 bg-gray-200/80 px-1.5 py-0.5 rounded">{group.tasks.length}</span>
+      <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 capitalize">{group.name}</span>
+      <span className="text-[10px] font-bold text-gray-400 bg-gray-200/80 dark:bg-gray-700 px-1.5 py-0.5 rounded">{group.tasks.length}</span>
       {onAddTask && (
-        <button onClick={(e) => { e.stopPropagation(); onAddTask(); }} className="ml-auto p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors opacity-0 group-hover/gh:opacity-100">
+        <button onClick={(e) => { e.stopPropagation(); onAddTask(); }} className="ml-auto p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded transition-colors opacity-0 group-hover/gh:opacity-100">
           <Plus className="h-4 w-4" />
         </button>
       )}
@@ -349,9 +349,9 @@ const AddTaskRow: React.FC<{
 
   if (adding) {
     return (
-      <div className="flex items-center w-full bg-purple-50/30 border-b border-purple-100/50" style={{ minWidth: totalW }}>
+      <div className="flex items-center w-full bg-purple-50/30 dark:bg-purple-900/20 border-b border-purple-100/50 dark:border-purple-800/50" style={{ minWidth: totalW }}>
         <div className="w-[60px] flex items-center justify-center">
-          {saving ? <Loader2 className="h-4 w-4 text-purple-500 animate-spin" /> : <Plus className="h-4 w-4 text-purple-500" />}
+          {saving ? <Loader2 className="h-4 w-4 text-purple-500 dark:text-purple-400 animate-spin" /> : <Plus className="h-4 w-4 text-purple-500 dark:text-purple-400" />}
         </div>
         <div className="flex-1 py-1.5 pr-3">
           <input
@@ -362,10 +362,10 @@ const AddTaskRow: React.FC<{
             onBlur={() => { if (!name.trim()) setAdding(false); }}
             disabled={saving}
             placeholder="Task name (Enter to save, Esc to cancel)"
-            className="w-full px-3 py-1.5 text-sm rounded border border-purple-300 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder:text-gray-400"
+            className="w-full px-3 py-1.5 text-sm rounded border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
           />
         </div>
-        <button onClick={() => { setName(''); setAdding(false); }} className="p-2 mr-2 text-gray-400 hover:text-gray-600"><X className="h-4 w-4" /></button>
+        <button onClick={() => { setName(''); setAdding(false); }} className="p-2 mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><X className="h-4 w-4" /></button>
       </div>
     );
   }
@@ -373,11 +373,11 @@ const AddTaskRow: React.FC<{
   return (
     <button
       onClick={() => setAdding(true)}
-      className="flex items-center w-full px-3 py-2 text-sm text-gray-400 hover:text-purple-600 hover:bg-purple-50/30 border-b border-gray-100 transition-colors group/add"
+      className="flex items-center w-full px-3 py-2 text-sm text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50/30 dark:hover:bg-purple-900/20 border-b border-gray-100 dark:border-gray-800 transition-colors group/add"
       style={{ minWidth: totalW }}
     >
-      <div className="w-[60px] flex items-center justify-center"><Plus className="h-4 w-4 group-hover/add:text-purple-600 transition-colors" /></div>
-      <span className="group-hover/add:text-purple-600 transition-colors">Add task...</span>
+      <div className="w-[60px] flex items-center justify-center"><Plus className="h-4 w-4 group-hover/add:text-purple-600 dark:group-hover/add:text-purple-400 transition-colors" /></div>
+      <span className="group-hover/add:text-purple-600 dark:group-hover/add:text-purple-400 transition-colors">Add task...</span>
     </button>
   );
 };
@@ -908,12 +908,12 @@ export const TaskList: React.FC<TaskListProps> = ({
   if (isLoading) return <SkeletonTaskList rows={8} />;
 
   return (
-    <div className={cn('flex flex-col h-full bg-white overflow-hidden', className)}>
+    <div className={cn('flex flex-col h-full bg-white dark:bg-gray-900 overflow-hidden transition-colors', className)}>
       {/* Metadata loading */}
       {loadingMetadata && (
-        <div className="flex items-center justify-center gap-2 py-1.5 bg-purple-50 border-b border-purple-100">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600" />
-          <span className="text-xs text-purple-600">Loading metadata...</span>
+        <div className="flex items-center justify-center gap-2 py-1.5 bg-purple-50 dark:bg-purple-900/30 border-b border-purple-100 dark:border-purple-800">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-purple-600 dark:text-purple-400" />
+          <span className="text-xs text-purple-600 dark:text-purple-400">Loading metadata...</span>
         </div>
       )}
 
@@ -998,11 +998,11 @@ export const TaskList: React.FC<TaskListProps> = ({
 
         {filteredTasks.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-              <LayoutList className="w-7 h-7 text-gray-400" />
+            <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-3">
+              <LayoutList className="w-7 h-7 text-gray-400 dark:text-gray-500" />
             </div>
-            <h3 className="text-base font-medium text-gray-900 mb-1">No tasks found</h3>
-            <p className="text-sm text-gray-500 mb-4">{searchQuery ? 'Try a different search term' : 'Create your first task to get started'}</p>
+            <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">No tasks found</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{searchQuery ? 'Try a different search term' : 'Create your first task to get started'}</p>
             {onAddTask && (
               <button onClick={onAddTask} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors shadow-sm">
                 <Plus className="h-4 w-4" /> Create Task

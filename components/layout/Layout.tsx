@@ -14,7 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { sidebarOpen } = useUIStore();
 
   return (
-    <div className="flex h-screen bg-[#F8F9FB] overflow-hidden">
+    <div className="flex h-screen bg-[#F8F9FB] dark:bg-gray-950 overflow-hidden transition-colors">
       {/* Sidebar */}
       <Sidebar />
 
@@ -24,7 +24,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <Header />
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-[#F8F9FB] dark:bg-gray-950 transition-colors">
           {children}
         </main>
       </div>

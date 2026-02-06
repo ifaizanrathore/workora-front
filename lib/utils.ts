@@ -565,12 +565,31 @@ export function getCountdown(targetDate: string | number | Date): CountdownTime 
   let target: number;
   if (typeof targetDate === 'string') {
     const parsed = parseInt(targetDate, 10);
-    target = !isNaN(parsed) && parsed > 0 ? new Date(parsed).getTime() : new Date(targetDate).getTime();
+    // Only use parsed number if it's a valid timestamp (greater than year 2000)
+    target = !isNaN(parsed) && parsed > 946684800000 ? parsed : new Date(targetDate).getTime();
+  } else if (typeof targetDate === 'number') {
+    // If it's a number, only use it if it's a valid timestamp (greater than year 2000)
+    target = targetDate > 946684800000 ? targetDate : new Date(targetDate).getTime();
   } else {
     target = new Date(targetDate).getTime();
   }
-  const diff = target - now;
   
+  // Validate the result - reject if it's the Unix epoch or an invalid date
+  if (isNaN(target) || target <= 946684800000) {
+    // Return a neutral countdown for invalid dates
+    return {
+      days: 0,
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      total: 0,
+      totalSeconds: 0,
+      isOverdue: false,
+      text: '',
+    };
+  }
+  
+  const diff = target - now;
   const isOverdue = diff < 0;
   const absDiff = Math.abs(diff);
   

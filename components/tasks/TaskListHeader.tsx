@@ -285,17 +285,17 @@ const FieldsPanel: React.FC<{
   const hidden = filtered.filter((c) => !c.visible);
 
   return (
-    <div ref={ref} className="absolute right-0 top-full mt-1 z-50 w-60 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
+    <div ref={ref} className="absolute right-0 top-full mt-1 z-50 w-60 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Search */}
-      <div className="p-2 border-b border-gray-100">
+      <div className="p-2 border-b border-gray-100 dark:border-gray-700">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
             placeholder="Search fields..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md bg-gray-50 focus:outline-none focus:ring-1 focus:ring-purple-400 focus:border-purple-400"
+            className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-400 dark:focus:ring-purple-500 focus:border-purple-400 dark:focus:border-purple-500"
           />
         </div>
       </div>
@@ -303,33 +303,33 @@ const FieldsPanel: React.FC<{
       <div className="max-h-64 overflow-y-auto py-1">
         {shown.length > 0 && (
           <div>
-            <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Shown</div>
+            <div className="px-3 py-1 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Shown</div>
             {shown.map((col) => (
-              <button key={col.id} onClick={() => onToggle(col.id)} className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors">
+              <button key={col.id} onClick={() => onToggle(col.id)} className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                 <div className="w-4 h-4 rounded border-[1.5px] border-purple-500 bg-purple-500 flex items-center justify-center">
                   <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />
                 </div>
-                <span className="text-gray-700">{col.label}</span>
+                <span className="text-gray-700 dark:text-gray-200">{col.label}</span>
               </button>
             ))}
           </div>
         )}
         {hidden.length > 0 && (
-          <div className={shown.length > 0 ? 'border-t border-gray-100 mt-1 pt-1' : ''}>
-            <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hidden</div>
+          <div className={shown.length > 0 ? 'border-t border-gray-100 dark:border-gray-700 mt-1 pt-1' : ''}>
+            <div className="px-3 py-1 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Hidden</div>
             {hidden.map((col) => (
-              <button key={col.id} onClick={() => onToggle(col.id)} className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm hover:bg-gray-50 transition-colors">
-                <div className="w-4 h-4 rounded border-[1.5px] border-gray-300 bg-white" />
-                <span className="text-gray-400">{col.label}</span>
+              <button key={col.id} onClick={() => onToggle(col.id)} className="flex items-center gap-2.5 w-full px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <div className="w-4 h-4 rounded border-[1.5px] border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800" />
+                <span className="text-gray-400 dark:text-gray-500">{col.label}</span>
               </button>
             ))}
           </div>
         )}
-        {filtered.length === 0 && <div className="px-3 py-3 text-center text-sm text-gray-400">No fields found</div>}
+        {filtered.length === 0 && <div className="px-3 py-3 text-center text-sm text-gray-400 dark:text-gray-500">No fields found</div>}
       </div>
 
-      <div className="border-t border-gray-100 p-1.5">
-        <button onClick={() => { onReset(); onClose(); }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 rounded-md transition-colors">
+      <div className="border-t border-gray-100 dark:border-gray-700 p-1.5">
+        <button onClick={() => { onReset(); onClose(); }} className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors">
           <RotateCcw className="h-3.5 w-3.5" />
           Reset to defaults
         </button>
@@ -403,14 +403,14 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
   const totalW = visible.reduce((s, c) => s + c.width, 0) + 96;
 
   return (
-    <div className="flex items-center bg-gray-50/80 border-b border-gray-200 sticky top-0 z-20" style={{ minWidth: totalW }}>
+    <div className="flex items-center bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-20 transition-colors" style={{ minWidth: totalW }}>
       {/* Checkbox + drag spacer */}
       <div className="w-[60px] flex-shrink-0 flex items-center pl-3 pr-1">
         <button
           onClick={() => onSelectAll?.(!allSelected)}
           className={cn(
             'w-4 h-4 rounded border-[1.5px] flex items-center justify-center transition-all',
-            allSelected ? 'bg-purple-600 border-purple-600' : someSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400 bg-white'
+            allSelected ? 'bg-purple-600 border-purple-600' : someSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 bg-white dark:bg-gray-800'
           )}
         >
           {allSelected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
@@ -422,16 +422,16 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
         <div
           key={col.id}
           className={cn(
-            'relative flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider select-none flex-shrink-0',
-            col.sortable && 'cursor-pointer hover:text-gray-700 hover:bg-gray-100/50',
-            resizingCol === col.id && 'bg-purple-50'
+            'relative flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none flex-shrink-0',
+            col.sortable && 'cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50',
+            resizingCol === col.id && 'bg-purple-50 dark:bg-purple-900/30'
           )}
           style={{ width: col.width }}
           onClick={() => col.sortable && handleSort(col.id)}
         >
-          <span className="text-gray-400">{React.isValidElement(col.icon) ? col.icon : null}</span>
+          <span className="text-gray-400 dark:text-gray-500">{React.isValidElement(col.icon) ? col.icon : null}</span>
           <span className="truncate">{col.label}</span>
-          {activeSort === col.id && <span className="text-purple-500 text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
+          {activeSort === col.id && <span className="text-purple-500 dark:text-purple-400 text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>}
           {col.resizable && <ResizeHandle columnId={col.id} onResize={handleResize} onResizeEnd={() => setResizingCol(null)} />}
         </div>
       ))}
@@ -440,7 +440,7 @@ export const TaskListHeader: React.FC<TaskListHeaderProps> = ({
       <div className="flex items-center px-2 min-w-[36px] flex-shrink-0 relative">
         <button
           onClick={() => setShowFields(!showFields)}
-          className={cn('p-1 rounded hover:bg-gray-200/60 transition-colors', showFields ? 'text-purple-600 bg-purple-50' : 'text-gray-400 hover:text-gray-600')}
+          className={cn('p-1 rounded hover:bg-gray-200/60 dark:hover:bg-gray-700/60 transition-colors', showFields ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300')}
           title="Manage columns"
         >
           <Plus className="h-3.5 w-3.5" />

@@ -32,9 +32,9 @@ export const ETAPanel: React.FC<ETAPanelProps> = ({ taskId, accountability }) =>
   const setETA = useSetTaskETA();
   const extendETA = useExtendTaskETA();
 
-  const extensions = accountability?.extensions || mockPostpones;
-  const iconsRemaining = accountability?.maxStrikes 
-    ? accountability.maxStrikes - accountability.strikes 
+  const extensions = (accountability?.etaHistory as unknown as ETAExtension[]) || mockPostpones;
+  const iconsRemaining = accountability?.maxStrikes
+    ? accountability.maxStrikes - accountability.strikeCount
     : 3;
 
   // Get status color

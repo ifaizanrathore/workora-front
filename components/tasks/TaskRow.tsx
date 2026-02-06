@@ -138,7 +138,7 @@ const InlineTextInput: React.FC<{
       onKeyDown={(e) => { if (e.key === 'Enter') onSave(text); if (e.key === 'Escape') onCancel(); }}
       onBlur={() => onSave(text)}
       placeholder="Task name..."
-      className="w-full px-2 py-1 text-sm border border-purple-400 rounded outline-none focus:ring-2 focus:ring-purple-200 bg-white"
+      className="w-full px-2 py-1 text-sm border border-purple-400 dark:border-purple-600 rounded outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 bg-white dark:bg-gray-800 dark:text-white"
     />
   );
 };
@@ -169,7 +169,7 @@ const InlineDatePicker: React.FC<{
       onChange={(e) => setDateStr(e.target.value)}
       onBlur={save}
       onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') onCancel(); }}
-      className="px-2 py-1 text-sm border border-purple-400 rounded outline-none focus:ring-2 focus:ring-purple-200 bg-white"
+      className="px-2 py-1 text-sm border border-purple-400 dark:border-purple-600 rounded outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800 bg-white dark:bg-gray-800 dark:text-white"
     />
   );
 };
@@ -198,13 +198,13 @@ function InlineSelect<T>({
     return () => document.removeEventListener('mousedown', handler);
   }, [onCancel]);
   return (
-    <div ref={ref} className="absolute top-full left-0 mt-1 z-50 min-w-[160px] max-h-60 overflow-auto bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+    <div ref={ref} className="absolute top-full left-0 mt-1 z-50 min-w-[160px] max-h-60 overflow-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
       {options.map((o) => (
-        <button key={getKey(o)} onClick={() => onSelect(o)} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors">
+        <button key={getKey(o)} onClick={() => onSelect(o)} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white transition-colors">
           {renderOption(o)}
         </button>
       ))}
-      {options.length === 0 && <div className="px-3 py-2 text-sm text-gray-400">No options</div>}
+      {options.length === 0 && <div className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500">No options</div>}
     </div>
   );
 }
@@ -259,15 +259,15 @@ const NameCell: React.FC<{
       // Double click: stops propagation + enters inline edit mode
       onDoubleClick={(e) => { e.stopPropagation(); onStartEdit(); }}
     >
-      <span className="text-sm text-gray-800 truncate font-medium group-hover/name:text-purple-700 transition-colors">{task.name}</span>
+      <span className="text-sm text-gray-800 dark:text-gray-200 truncate font-medium group-hover/name:text-purple-700 dark:group-hover/name:text-purple-400 transition-colors">{task.name}</span>
 
       {/* Pencil icon: click to rename (visible on hover) */}
       <button
         onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
-        className="opacity-0 group-hover/name:opacity-100 p-0.5 rounded hover:bg-gray-200 transition-all flex-shrink-0"
+        className="opacity-0 group-hover/name:opacity-100 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex-shrink-0"
         title="Rename task"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 dark:text-gray-500">
           <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
           <path d="m15 5 4 4"/>
         </svg>
@@ -281,7 +281,7 @@ const NameCell: React.FC<{
         </div>
       )}
       {checklistProgress && (
-        <span className="text-[11px] text-gray-400 flex-shrink-0 tabular-nums">☰ {checklistProgress.done}/{checklistProgress.total}</span>
+        <span className="text-[11px] text-gray-400 dark:text-gray-500 flex-shrink-0 tabular-nums">☰ {checklistProgress.done}/{checklistProgress.total}</span>
       )}
     </div>
   );
@@ -351,12 +351,12 @@ const PriorityCell: React.FC<{
   const hasPriority = priority && priority.priority;
 
   const pillClass = (() => {
-    if (!hasPriority) return 'bg-transparent text-gray-300 hover:text-gray-400 hover:bg-gray-50';
+    if (!hasPriority) return 'bg-transparent text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800';
     const name = (priority.priority ?? '').toLowerCase();
-    if (name === 'urgent') return 'bg-red-50 text-red-600';
-    if (name === 'high') return 'bg-orange-50 text-orange-600';
-    if (name === 'normal') return 'bg-blue-50 text-blue-600';
-    return 'bg-gray-50 text-gray-500';
+    if (name === 'urgent') return 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400';
+    if (name === 'high') return 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400';
+    if (name === 'normal') return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
+    return 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400';
   })();
 
   return (
@@ -429,13 +429,13 @@ const DueDateCell: React.FC<{
   if (!urgency) {
     return (
       <div className="flex-shrink-0 px-3 py-2 cursor-pointer group/date" style={{ width }} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
-        <span className="text-[11px] text-gray-300 group-hover/date:text-gray-400 transition-colors">Set date</span>
+        <span className="text-[11px] text-gray-300 dark:text-gray-600 group-hover/date:text-gray-400 dark:group-hover/date:text-gray-500 transition-colors">Set date</span>
       </div>
     );
   }
 
   return (
-    <div className="flex-shrink-0 px-3 py-2 cursor-pointer hover:bg-gray-50/50" style={{ width }} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
+    <div className="flex-shrink-0 px-3 py-2 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-gray-800/50" style={{ width }} onClick={(e) => { e.stopPropagation(); onStartEdit(); }}>
       <span className={cn(
         'inline-flex items-center gap-1.5 text-sm font-medium px-1.5 py-0.5 rounded',
         urgency.text,
@@ -468,19 +468,19 @@ const AssigneeCell: React.FC<{
 
   return (
     <div className="flex-shrink-0 px-3 py-2 relative" style={{ width }} onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-1 cursor-pointer rounded p-0.5 -m-0.5 hover:bg-gray-50" onClick={onStartEdit}>
+      <div className="flex items-center gap-1 cursor-pointer rounded p-0.5 -m-0.5 hover:bg-gray-50 dark:hover:bg-gray-800" onClick={onStartEdit}>
         {list.length > 0 ? (
           list.slice(0, 3).map((a, i) => (
-            <div key={a.id} className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold ring-2 ring-white" style={{ backgroundColor: bg(a), marginLeft: i > 0 ? -6 : 0, zIndex: 3 - i }} title={name(a)}>
+            <div key={a.id} className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-semibold ring-2 ring-white dark:ring-gray-900" style={{ backgroundColor: bg(a), marginLeft: i > 0 ? -6 : 0, zIndex: 3 - i }} title={name(a)}>
               {a.profilePicture ? <img src={a.profilePicture} alt="" className="w-full h-full rounded-full object-cover" /> : initials(a)}
             </div>
           ))
         ) : (
-          <div className="w-6 h-6 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 hover:border-gray-400 transition-colors">
+          <div className="w-6 h-6 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
             <User className="w-3 h-3" />
           </div>
         )}
-        {list.length > 3 && <span className="text-[10px] text-gray-400 ml-1">+{list.length - 3}</span>}
+        {list.length > 3 && <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-1">+{list.length - 3}</span>}
       </div>
 
       {isEditing && (
@@ -528,31 +528,31 @@ const TagsCell: React.FC<{
             </span>
           ))
         ) : (
-          <span className="w-5 h-5 rounded border border-dashed border-gray-300 flex items-center justify-center text-gray-300 hover:border-gray-400 hover:text-gray-400 transition-colors text-xs">+</span>
+          <span className="w-5 h-5 rounded border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-400 dark:hover:text-gray-500 transition-colors text-xs">+</span>
         )}
       </div>
 
       {isEditing && (
-        <div className="absolute top-full left-0 mt-1 z-50 min-w-[180px] max-h-60 overflow-auto bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+        <div className="absolute top-full left-0 mt-1 z-50 min-w-[180px] max-h-60 overflow-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
           {list.length > 0 && (
             <>
-              <div className="px-3 py-1 text-[10px] text-gray-400 uppercase font-bold">Current</div>
+              <div className="px-3 py-1 text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold">Current</div>
               {list.map((tag) => (
-                <button key={tag.name} onClick={() => onRemoveTag(tag.name)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-red-50 flex items-center justify-between group">
+                <button key={tag.name} onClick={() => onRemoveTag(tag.name)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center justify-between group">
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }}>{tag.name}</span>
                   <X className="w-3.5 h-3.5 text-red-400 opacity-0 group-hover:opacity-100" />
                 </button>
               ))}
-              <div className="border-t border-gray-100 my-1" />
+              <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
             </>
           )}
-          <div className="px-3 py-1 text-[10px] text-gray-400 uppercase font-bold">Add</div>
+          <div className="px-3 py-1 text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold">Add</div>
           {availableTags.filter((t) => !list.some((ct: any) => ct.name === t.name)).map((tag) => (
-            <button key={tag.name} onClick={() => onAddTag(tag)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50">
+            <button key={tag.name} onClick={() => onAddTag(tag)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
               <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }}>{tag.name}</span>
             </button>
           ))}
-          <button onClick={onCancel} className="w-full px-3 py-1.5 text-left text-sm text-gray-500 hover:bg-gray-50 border-t border-gray-100">Done</button>
+          <button onClick={onCancel} className="w-full px-3 py-1.5 text-left text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700">Done</button>
         </div>
       )}
     </div>
@@ -662,15 +662,15 @@ const ETACell: React.FC<{
   if (!etaInfo) {
     return (
       <div className="flex-shrink-0 px-3 py-2" style={{ width }} onClick={(e) => e.stopPropagation()}>
-        <span className="text-gray-300 text-sm">—</span>
+        <span className="text-gray-300 dark:text-gray-600 text-sm">—</span>
       </div>
     );
   }
 
   const colorMap = {
-    green: { dot: 'bg-green-500', text: 'text-green-600', bg: 'bg-green-50' },
-    orange: { dot: 'bg-orange-500', text: 'text-orange-500', bg: 'bg-orange-50' },
-    red: { dot: 'bg-red-500', text: 'text-red-500', bg: 'bg-red-50' },
+    green: { dot: 'bg-green-500', text: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/30' },
+    orange: { dot: 'bg-orange-500', text: 'text-orange-500 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/30' },
+    red: { dot: 'bg-red-500', text: 'text-red-500 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30' },
   };
 
   const c = colorMap[etaInfo.color];
@@ -721,13 +721,13 @@ const TimerCell: React.FC<{
         onClick={(e) => { e.stopPropagation(); onToggle?.(); }}
         className={cn(
           'w-5 h-5 rounded-full flex items-center justify-center transition-all',
-          running ? 'bg-purple-100 text-purple-600' : 'bg-transparent text-gray-400 opacity-0 group-hover/timer:opacity-100 hover:bg-gray-100'
+          running ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400' : 'bg-transparent text-gray-400 dark:text-gray-500 opacity-0 group-hover/timer:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-800'
         )}
       >
         {running ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5 ml-px" />}
       </button>
       {hasTime && (
-        <span className={cn('text-xs tabular-nums', running ? 'text-purple-600 font-medium' : 'text-gray-500')}>
+        <span className={cn('text-xs tabular-nums', running ? 'text-purple-600 dark:text-purple-400 font-medium' : 'text-gray-500 dark:text-gray-400')}>
           {fmt(total)}
         </span>
       )}
@@ -740,7 +740,7 @@ const TimerCell: React.FC<{
 // FIX: Stronger hover state, single click opens task, edit via double-click
 // ============================================================
 
-export const TaskRow: React.FC<TaskRowProps> = ({
+export const TaskRow: React.FC<TaskRowProps> = React.memo(({
   task,
   columns,
   accountability,
@@ -840,12 +840,12 @@ export const TaskRow: React.FC<TaskRowProps> = ({
     <div
       ref={rowRef}
       className={cn(
-        'flex items-center border-b border-gray-100 bg-white transition-all group',
-        'hover:bg-purple-50/40',
-        isDragging && 'opacity-40 bg-purple-50',
+        'flex items-center border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all group',
+        'hover:bg-purple-50/40 dark:hover:bg-purple-900/20',
+        isDragging && 'opacity-40 bg-purple-50 dark:bg-purple-900/30',
         isDragOver && dragPosition === 'above' && 'border-t-2 border-t-purple-500',
         isDragOver && dragPosition === 'below' && 'border-b-2 border-b-purple-500',
-        isSelected && 'bg-purple-50/60',
+        isSelected && 'bg-purple-50/60 dark:bg-purple-900/40',
         isUpdating && 'opacity-60 pointer-events-none'
       )}
       style={{ borderLeft: `3px solid ${priorityBorderColor}` }}
@@ -861,14 +861,14 @@ export const TaskRow: React.FC<TaskRowProps> = ({
           onClick={(e) => { e.stopPropagation(); onSelect?.(task.id, !isSelected); }}
           className={cn(
             'w-4 h-4 rounded border-[1.5px] flex items-center justify-center transition-all flex-shrink-0',
-            isSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300 opacity-0 group-hover:opacity-100 hover:border-purple-400'
+            isSelected ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-600 opacity-0 group-hover:opacity-100 hover:border-purple-400 dark:hover:border-purple-500'
           )}
         >
           {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
         </button>
         {/* Drag */}
         <div draggable onDragStart={handleDragStart} className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-          <GripVertical className="w-3.5 h-3.5 text-gray-400" />
+          <GripVertical className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
         </div>
       </div>
 
@@ -900,35 +900,35 @@ export const TaskRow: React.FC<TaskRowProps> = ({
       <div className="flex items-center px-2 min-w-[36px] flex-shrink-0 relative">
         <button
           onClick={(e) => { e.stopPropagation(); setShowActions(!showActions); }}
-          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all"
+          className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-all"
         >
           <MoreHorizontal className="w-4 h-4" />
         </button>
 
         {showActions && (
-          <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1">
+          <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
             {onComplete && (
-              <button onClick={(e) => { e.stopPropagation(); onComplete(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+              <button onClick={(e) => { e.stopPropagation(); onComplete(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" /> Mark Complete
               </button>
             )}
             {onOpenInClickUp && (
-              <button onClick={(e) => { e.stopPropagation(); onOpenInClickUp(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+              <button onClick={(e) => { e.stopPropagation(); onOpenInClickUp(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white flex items-center gap-2">
                 <ExternalLink className="w-4 h-4" /> Open in ClickUp
               </button>
             )}
             {onDuplicate && (
-              <button onClick={(e) => { e.stopPropagation(); onDuplicate(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+              <button onClick={(e) => { e.stopPropagation(); onDuplicate(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white flex items-center gap-2">
                 <Copy className="w-4 h-4" /> Duplicate
               </button>
             )}
             {onArchive && (
-              <button onClick={(e) => { e.stopPropagation(); onArchive(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+              <button onClick={(e) => { e.stopPropagation(); onArchive(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-white flex items-center gap-2">
                 <Archive className="w-4 h-4" /> Archive
               </button>
             )}
             {onDelete && (
-              <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2">
+              <button onClick={(e) => { e.stopPropagation(); onDelete(task.id); setShowActions(false); }} className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center gap-2">
                 <Trash2 className="w-4 h-4" /> Delete
               </button>
             )}
@@ -937,6 +937,8 @@ export const TaskRow: React.FC<TaskRowProps> = ({
       </div>
     </div>
   );
-};
+});
+
+TaskRow.displayName = 'TaskRow';
 
 export default TaskRow;

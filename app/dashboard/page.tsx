@@ -1,12 +1,27 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { TaskList } from '@/components/tasks/TaskList';
-import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
-import { TaskDetailModal } from '@/components/tasks/TaskDetailModal';
 import { useTaskStore, useWorkspaceStore } from '@/stores';
 import { api } from '@/lib/api';
-import { Loader2, ListTree, Plus } from 'lucide-react';
+import { ListTree } from 'lucide-react';
+import { SkeletonTaskList } from '@/components/ui/skeleton';
+
+// Lazy load heavy modal components for better performance
+const CreateTaskModal = lazy(() => import('@/components/tasks/CreateTaskModal').then(m => ({ default: m.CreateTaskModal })));
+const TaskDetailModal = lazy(() => import('@/components/tasks/TaskDetailModal').then(m => ({ default: m.TaskDetailModal })));
+
+// Modal loading fallback
+const ModalLoadingFallback = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+    <div className="bg-white rounded-xl p-8 shadow-xl">
+      <div className="flex items-center gap-3">
+        <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-gray-600">Loading...</span>
+      </div>
+    </div>
+  </div>
+);
 
 export default function DashboardPage() {
   const { tasks, setTasks, isModalOpen, isCreateModalOpen, openCreateModal } = useTaskStore();
@@ -34,9 +49,9 @@ export default function DashboardPage() {
     try {
       const fetchedTasks = await api.getTasks(currentList.id);
       setTasks(fetchedTasks);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch tasks:', err);
-      setError(err.message || 'Failed to load tasks');
+      setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
       setIsLoading(false);
     }
@@ -115,9 +130,18 @@ export default function DashboardPage() {
   // Show loading while initializing
   if (isInitializing && !currentList) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-[#F8F9FB]">
-        <Loader2 className="w-10 h-10 animate-spin text-[#7C3AED] mb-4" />
-        <p className="text-[#5C5C6D] text-sm">Loading your workspace...</p>
+      <div className="h-full flex flex-col bg-[#F8F9FB]">
+        {/* Skeleton Header */}
+        <div className="px-6 py-4 bg-white border-b border-[#ECEDF0]">
+          <div className="flex items-center gap-3">
+            <div className="h-7 w-32 bg-gray-200 rounded animate-pulse" />
+            <div className="h-6 w-16 bg-gray-100 rounded animate-pulse" />
+          </div>
+        </div>
+        {/* Skeleton Task List */}
+        <div className="flex-1 overflow-hidden">
+          <SkeletonTaskList rows={8} />
+        </div>
       </div>
     );
   }
@@ -184,9 +208,11 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Modals */}
-      {isCreateModalOpen && <CreateTaskModal />}
-      {isModalOpen && <TaskDetailModal />}
+      {/* Modals - Lazy loaded with Suspense */}
+      <Suspense fallback={<ModalLoadingFallback />}>
+        {isCreateModalOpen && <CreateTaskModal />}
+        {isModalOpen && <TaskDetailModal />}
+      </Suspense>
     </div>
   );
 }

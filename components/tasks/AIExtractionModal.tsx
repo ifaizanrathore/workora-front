@@ -15,7 +15,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
-import { Priority, TaskTag } from './CreateTaskModal';
+import toast from 'react-hot-toast';
+import type { Priority, TaskTag } from '@/hooks';
+
+// API response types for AI extraction
+interface ExtractedTaskFromAPI {
+  name: string;
+  description?: string;
+  priority?: number;
+  suggestedTags?: string[];
+}
 
 interface ExtractedTask {
   name: string;
@@ -45,7 +54,7 @@ export const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
   listId,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [mode, setMode] = useState<'image' | 'text'>('image');
   const [aiText, setAiText] = useState('');
   const [aiImage, setAiImage] = useState<string | null>(null);
@@ -110,6 +119,20 @@ export const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
     return () => document.removeEventListener('paste', handlePaste);
   }, [handlePaste]);
 
+  // Close modal on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   const clearInput = () => {
     setAiImage(null);
     setAiText('');
@@ -119,12 +142,12 @@ export const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
 
   const handleExtract = async () => {
     if (!listId) return;
-    
+
     setIsExtracting(true);
 
     try {
       let result;
-      
+
       if (mode === 'image' && aiImage) {
         const base64 = aiImage.split(',')[1];
         result = await api.extractTasksFromImage(base64, listId);
@@ -133,11 +156,11 @@ export const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
       }
 
       if (result?.tasks && result.tasks.length > 0) {
-        // Map API response to our format
-        const mappedTasks: ExtractedTask[] = result.tasks.map((task: any) => ({
+        // Map API response to our format with proper typing
+        const mappedTasks: ExtractedTask[] = result.tasks.map((task: ExtractedTaskFromAPI) => ({
           name: task.name,
           description: task.description,
-          priority: task.priority ? priorityOptions.find(p => p.id === task.priority.toString()) : undefined,
+          priority: task.priority ? priorityOptions.find(p => p.id === task.priority?.toString()) : undefined,
           tags: task.suggestedTags?.map((tag: string) => ({
             name: tag,
             tag_bg: '#5B4FD1',
@@ -147,34 +170,17 @@ export const AIExtractionModal: React.FC<AIExtractionModalProps> = ({
 
         setExtractedTasks(mappedTasks);
         setShowPreview(true);
+        toast.success(`Found ${mappedTasks.length} task(s)`);
       } else {
-        // Mock response for demo purposes
-        const mockTasks: ExtractedTask[] = [
-          {
-            name: 'Create landing page design',
-            description: 'Design a modern landing page with hero section, features, and CTA',
-            priority: priorityOptions[1],
-            tags: [
-              { name: 'Design', tag_bg: '#8B5CF6', tag_fg: '#fff' },
-              { name: 'Frontend', tag_bg: '#3B82F6', tag_fg: '#fff' },
-            ],
-          },
-        ];
-        setExtractedTasks(mockTasks);
-        setShowPreview(true);
+        toast.error('No tasks could be extracted. Please try with different content.');
+        setExtractedTasks([]);
+        setShowPreview(false);
       }
     } catch (error) {
       console.error('Failed to extract tasks:', error);
-      // Show mock data on error for demo
-      const mockTasks: ExtractedTask[] = [
-        {
-          name: 'Extracted task from ' + (mode === 'image' ? 'image' : 'text'),
-          description: mode === 'text' ? aiText.slice(0, 100) : 'Task extracted from uploaded image',
-          priority: priorityOptions[2],
-        },
-      ];
-      setExtractedTasks(mockTasks);
-      setShowPreview(true);
+      toast.error('Failed to extract tasks. Please try again.');
+      setExtractedTasks([]);
+      setShowPreview(false);
     } finally {
       setIsExtracting(false);
     }

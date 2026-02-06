@@ -40,7 +40,7 @@ export function useProfile(options: UseProfileOptions = {}): UseProfileReturn {
   } = options;
 
   const [data, setData] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
   
   const retryAttempts = useRef(0);

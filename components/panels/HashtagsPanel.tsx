@@ -19,6 +19,7 @@ import { formatTimeCompact, cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { useTaskSocket } from '@/hooks/useSocket';
 import { useAuthStore } from '@/stores';
+import { SkeletonHashtagsPanel } from '@/components/ui/skeleton';
 
 interface HashtagsPanelProps {
   taskId: string;
@@ -30,7 +31,7 @@ interface Comment {
   comment_text?: string;
   text?: string;
   user?: {
-    id?: number;
+    id?: string | number;
     username?: string;
     email?: string;
     profilePicture?: string;
@@ -268,11 +269,7 @@ export const HashtagsPanel: React.FC<HashtagsPanelProps> = ({ taskId, initialFil
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <Loader2 className="h-6 w-6 animate-spin text-[#7C3AED]" />
-      </div>
-    );
+    return <SkeletonHashtagsPanel />;
   }
 
   return (
