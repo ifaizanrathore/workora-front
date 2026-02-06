@@ -2,19 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, CheckCircle, ArrowRight, Sparkles, Shield, Clock, Users } from 'lucide-react';
+import { CheckCircle, ArrowRight, Sparkles, Shield, Clock, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores';
-import { cn } from '@/lib/utils';
 
-// Workora Logo Component
+// Workora Logo Component — uses the actual favicon logo
 const WorkoraLogo = ({ size = 48 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="48" height="48" rx="12" fill="#6E62E5"/>
-    <path d="M12 18L24 30L36 18" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/>
-    <circle cx="24" cy="14" r="4" fill="white"/>
-  </svg>
+  <img
+    src="/favicon.ico"
+    alt="Workora"
+    style={{ width: size, height: size, borderRadius: size * 0.25 }}
+    className="object-contain"
+  />
 );
 
 // ClickUp Logo Component
@@ -51,7 +51,7 @@ export default function LoginPage() {
   // If already authenticated, redirect to home
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/home');
+      router.replace('/dashboard');
     }
   }, [isAuthenticated, router]);
 
@@ -173,7 +173,7 @@ export default function LoginPage() {
             <Button
               onClick={handleClickUpLogin}
               isLoading={isLoading}
-              className="w-full h-12 text-base gap-3"
+              className="w-full h-12 text-base gap-3 !bg-[#6E62E5] hover:!bg-[#5B4FD1] !text-white"
               size="lg"
             >
               {!isLoading && <ClickUpLogo />}

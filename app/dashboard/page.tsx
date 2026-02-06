@@ -14,10 +14,10 @@ const TaskDetailModal = lazy(() => import('@/components/tasks/TaskDetailModal').
 // Modal loading fallback
 const ModalLoadingFallback = () => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-    <div className="bg-white rounded-xl p-8 shadow-xl">
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-xl">
       <div className="flex items-center gap-3">
         <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
-        <span className="text-gray-600">Loading...</span>
+        <span className="text-gray-600 dark:text-gray-300">Loading...</span>
       </div>
     </div>
   </div>
@@ -130,12 +130,12 @@ export default function DashboardPage() {
   // Show loading while initializing
   if (isInitializing && !currentList) {
     return (
-      <div className="h-full flex flex-col bg-[#F8F9FB]">
+      <div className="h-full flex flex-col bg-[#F8F9FB] dark:bg-gray-900">
         {/* Skeleton Header */}
-        <div className="px-6 py-4 bg-white border-b border-[#ECEDF0]">
+        <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-[#ECEDF0] dark:border-gray-800">
           <div className="flex items-center gap-3">
-            <div className="h-7 w-32 bg-gray-200 rounded animate-pulse" />
-            <div className="h-6 w-16 bg-gray-100 rounded animate-pulse" />
+            <div className="h-7 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-6 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
           </div>
         </div>
         {/* Skeleton Task List */}
@@ -149,12 +149,12 @@ export default function DashboardPage() {
   // Show empty state if no list
   if (!currentList && !isInitializing) {
     return (
-      <div className="flex flex-col items-center justify-center h-full bg-[#F8F9FB]">
-        <div className="w-20 h-20 rounded-full bg-[#F3F0FF] flex items-center justify-center mb-6">
-          <ListTree className="h-10 w-10 text-[#7C3AED]" />
+      <div className="flex flex-col items-center justify-center h-full bg-[#F8F9FB] dark:bg-gray-900">
+        <div className="w-20 h-20 rounded-full bg-[#F3F0FF] dark:bg-purple-900/30 flex items-center justify-center mb-6">
+          <ListTree className="h-10 w-10 text-[#7C3AED] dark:text-purple-400" />
         </div>
-        <h2 className="text-xl font-semibold text-[#1A1A2E] mb-2">No list selected</h2>
-        <p className="text-[#8C8C9A] text-sm mb-6 text-center max-w-md">
+        <h2 className="text-xl font-semibold text-[#1A1A2E] dark:text-white mb-2">No list selected</h2>
+        <p className="text-[#8C8C9A] dark:text-gray-400 text-sm mb-6 text-center max-w-md">
           Select a list from the sidebar to view tasks, or create a new list in your ClickUp workspace.
         </p>
         <button
@@ -168,15 +168,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#F8F9FB]">
+    <div className="h-full flex flex-col bg-[#F8F9FB] dark:bg-gray-900">
       {/* List Header */}
-      <div className="px-6 py-4 bg-white border-b border-[#ECEDF0]">
+      <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-[#ECEDF0] dark:border-gray-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-[#1A1A2E]">
+            <h1 className="text-xl font-semibold text-[#1A1A2E] dark:text-white">
               {currentList?.name || 'Tasks'}
             </h1>
-            <span className="px-2.5 py-1 bg-[#F3F4F6] text-[#6B7280] text-sm font-medium rounded-md">
+            <span className="px-2.5 py-1 bg-[#F3F4F6] dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 text-sm font-medium rounded-md">
               {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
             </span>
           </div>

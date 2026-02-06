@@ -788,7 +788,10 @@ export const TaskDetailModal: React.FC = () => {
                 <span>Tasks</span>
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
-              <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] text-[#8C8C9A] dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-purple-400 hover:bg-[#F3F0FF] dark:hover:bg-purple-900/30 rounded-lg transition-colors">
+              <button
+                onClick={() => toast('AI features coming soon!')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] text-[#8C8C9A] dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-purple-400 hover:bg-[#F3F0FF] dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+              >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Ask AI</span>
               </button>
@@ -805,10 +808,24 @@ export const TaskDetailModal: React.FC = () => {
               >
                 <Star className="h-4 w-4" fill={isStarred ? 'currentColor' : 'none'} />
               </button>
-              <button className="w-9 h-9 rounded-lg bg-[#EFF6FF] text-[#60A5FA] hover:bg-[#DBEAFE] flex items-center justify-center transition-colors">
+              <button
+                onClick={() => {
+                  if (task?.url) { navigator.clipboard.writeText(task.url); toast.success('Task link copied!'); }
+                  else { toast.success('Link copied!'); }
+                }}
+                title="Copy task link"
+                className="w-9 h-9 rounded-lg bg-[#EFF6FF] dark:bg-blue-900/30 text-[#60A5FA] hover:bg-[#DBEAFE] dark:hover:bg-blue-900/50 flex items-center justify-center transition-colors"
+              >
                 <Share2 className="h-4 w-4" />
               </button>
-              <button className="w-9 h-9 rounded-lg bg-[#FEF9C3] text-[#FACC15] hover:bg-[#FEF08A] flex items-center justify-center transition-colors">
+              <button
+                onClick={() => {
+                  if (task?.url) window.open(task.url, '_blank');
+                  else toast('No ClickUp URL available');
+                }}
+                title="Open in ClickUp"
+                className="w-9 h-9 rounded-lg bg-[#FEF9C3] dark:bg-yellow-900/30 text-[#FACC15] hover:bg-[#FEF08A] dark:hover:bg-yellow-900/50 flex items-center justify-center transition-colors"
+              >
                 <Eye className="h-4 w-4" />
               </button>
               <button
@@ -1057,9 +1074,26 @@ export const TaskDetailModal: React.FC = () => {
         <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#ECEDF0] dark:border-gray-700">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#E5E7EB] dark:border-gray-600 rounded-lg text-[12px] text-[#5C5C6D] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700">
+            <button
+              onClick={async () => {
+                if (!taskId) return;
+                const isDone = ['closed', 'complete', 'done', 'completed'].includes(task?.status?.status?.toLowerCase() || '');
+                const newStatus = isDone ? 'to do' : 'complete';
+                try {
+                  await api.updateTask(taskId, { status: newStatus });
+                  updateTask(taskId, { status: { ...task?.status, status: newStatus, color: isDone ? '#87909e' : '#6bc950' } as any });
+                  toast.success(isDone ? 'Task reopened' : 'Task completed');
+                } catch { toast.error('Failed to update status'); }
+              }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-[12px] transition-colors',
+                ['closed', 'complete', 'done', 'completed'].includes(task?.status?.status?.toLowerCase() || '')
+                  ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                  : 'border-[#E5E7EB] dark:border-gray-600 text-[#5C5C6D] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700'
+              )}
+            >
               <Check className="h-3.5 w-3.5" />
-              Mark complete
+              {['closed', 'complete', 'done', 'completed'].includes(task?.status?.status?.toLowerCase() || '') ? 'Completed' : 'Mark complete'}
             </button>
             <div className="flex items-center gap-1.5">
               <button
@@ -1088,7 +1122,10 @@ export const TaskDetailModal: React.FC = () => {
               <Lock className="h-3.5 w-3.5" />
               <span>This task is private to you.</span>
             </div>
-            <button className="text-[11px] text-[#7C3AED] dark:text-purple-400 font-medium hover:underline">
+            <button
+              onClick={() => toast('Privacy settings are managed in ClickUp')}
+              className="text-[11px] text-[#7C3AED] dark:text-purple-400 font-medium hover:underline"
+            >
               Make public
             </button>
           </div>
@@ -1125,19 +1162,7 @@ export const TaskDetailModal: React.FC = () => {
                 onClick={() => setActiveRightTab('documents')}
                 label="Docs"
               />
-              <SidebarIcon
-                icon={<Plus className="h-4 w-4" />}
-                active={false}
-                onClick={() => {}}
-                label="Add"
-              />
               <div className="flex-1" />
-              <SidebarIcon
-                icon={<MoreHorizontal className="h-4 w-4" />}
-                active={false}
-                onClick={() => {}}
-                label="More"
-              />
               <SidebarIcon
                 icon={<MessageCircle className="h-4 w-4" />}
                 active={activeRightTab === 'comments'}

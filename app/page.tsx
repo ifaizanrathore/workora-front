@@ -20,11 +20,7 @@ export default function RootPage() {
     // Check for token in localStorage (runs only on client)
     const checkAuth = () => {
       try {
-        // Check multiple possible token storage locations
-        const token =
-          localStorage.getItem('token') ||
-          localStorage.getItem('accessToken') ||
-          localStorage.getItem('workora-token');
+        const token = localStorage.getItem('token');
 
         if (token) {
           setMessage('Loading your workspace...');
@@ -61,16 +57,11 @@ export default function RootPage() {
           <div className="absolute inset-0 w-20 h-20 bg-[#5B4FD1]/20 rounded-2xl blur-xl animate-pulse" />
 
           {/* Logo container */}
-          <div className="relative w-20 h-20 bg-gradient-to-br from-[#5B4FD1] to-[#7C3AED] rounded-2xl shadow-lg flex items-center justify-center">
-            {/* W letter stylized */}
-            <svg
-              viewBox="0 0 40 40"
-              className="w-12 h-12 text-white"
-              fill="currentColor"
-            >
-              <path d="M8 10L12 30L20 18L28 30L32 10L28 10L26 22L20 12L14 22L12 10L8 10Z" />
-            </svg>
-          </div>
+          <img
+            src="/favicon.ico"
+            alt="Workora"
+            className="relative w-20 h-20 rounded-2xl shadow-lg object-contain"
+          />
 
           {/* Spinning ring */}
           <div className="absolute -inset-2 border-2 border-[#5B4FD1]/20 rounded-3xl animate-spin" style={{ animationDuration: '3s' }}>

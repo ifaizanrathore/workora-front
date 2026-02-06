@@ -20,10 +20,7 @@ export default function DashboardLayout({
   
   // First, check if token exists in localStorage
   useEffect(() => {
-    const token = 
-      localStorage.getItem('token') || 
-      localStorage.getItem('accessToken') ||
-      localStorage.getItem('workora-token');
+    const token = localStorage.getItem('token');
     
     setHasToken(!!token);
     
@@ -58,8 +55,6 @@ export default function DashboardLayout({
       hasCheckedAuth.current = true;
       // Clear invalid token
       localStorage.removeItem('token');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('workora-token');
       setLoadingMessage('Session expired, redirecting...');
       router.replace('/login');
     }
@@ -74,13 +69,13 @@ export default function DashboardLayout({
         
         {/* Loading Toast */}
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-lg border border-gray-200">
+          <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-700">
             <div className="flex gap-1">
               <div className="w-2 h-2 bg-[#5B4FD1] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
               <div className="w-2 h-2 bg-[#5B4FD1] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
               <div className="w-2 h-2 bg-[#5B4FD1] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
-            <span className="text-sm font-medium text-gray-600">{loadingMessage}</span>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{loadingMessage}</span>
           </div>
         </div>
       </div>
@@ -101,13 +96,13 @@ export default function DashboardLayout({
     <div className="relative">
       <SkeletonDashboardPage />
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-full shadow-lg border border-gray-200">
+        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-2.5 rounded-full shadow-lg border border-gray-200 dark:border-gray-700">
           <div className="flex gap-1">
             <div className="w-2 h-2 bg-[#5B4FD1] rounded-full animate-bounce" />
             <div className="w-2 h-2 bg-[#5B4FD1] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
             <div className="w-2 h-2 bg-[#5B4FD1] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
-          <span className="text-sm font-medium text-gray-600">Loading...</span>
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Loading...</span>
         </div>
       </div>
     </div>

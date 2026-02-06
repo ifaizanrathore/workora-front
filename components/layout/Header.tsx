@@ -3,31 +3,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, HelpCircle, ChevronDown, Settings, LogOut, User, Sun, Moon, Keyboard } from 'lucide-react';
+import { HelpCircle, ChevronDown, Settings, LogOut, User, Sun, Moon, Keyboard } from 'lucide-react';
 import { cn, getUserInitials, getAvatarColor } from '@/lib/utils';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useWorkspaceStore } from '@/stores';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export const Header: React.FC = () => {
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const { currentWorkspace } = useWorkspaceStore();
   const { toggleTheme, isDark } = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showShortcutsHint, setShowShortcutsHint] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Handle Ctrl+K shortcut
+  // Handle Escape to close dropdown
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
       if (e.key === 'Escape') {
-        searchRef.current?.blur();
         setIsDropdownOpen(false);
       }
     };
@@ -65,32 +58,16 @@ export const Header: React.FC = () => {
       {/* Left Spacer - Hidden on mobile */}
       <div className="hidden md:block w-[100px]" />
 
-      {/* Center - Search Bar */}
-      <div className="flex-1 flex justify-center max-w-[600px] mx-2 sm:mx-auto">
-        <div className="relative w-full">
-          <Search className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9CA3AF]" />
-          <input
-            ref={searchRef}
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
-            className={cn(
-              'w-full pl-9 sm:pl-10 pr-4 sm:pr-20 py-2 sm:py-2.5 bg-[#F5F7FA] dark:bg-gray-800 rounded-lg sm:rounded-xl text-sm text-[#1A1A2E] dark:text-gray-100 placeholder-[#9CA3AF] dark:placeholder-gray-500 transition-all duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-[#6E62E5]/20 focus:bg-white dark:focus:bg-gray-800 focus:shadow-sm',
-              isSearchFocused && 'bg-white dark:bg-gray-800 shadow-sm ring-2 ring-[#6E62E5]/20'
-            )}
-          />
-          {/* Keyboard Shortcut Badge - Hidden on mobile */}
-          <div className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-1">
-            <span className="px-1.5 py-0.5 bg-[#6E62E5] text-white text-[10px] font-semibold rounded">
-              Ctrl
-            </span>
-            <span className="px-1.5 py-0.5 bg-[#6E62E5] text-white text-[10px] font-semibold rounded">
-              K
-            </span>
+      {/* Center - Workspace Name */}
+      <div className="flex-1 flex justify-center mx-2 sm:mx-auto">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[#1A1A2E] dark:text-white truncate">
+            {currentWorkspace?.name || 'Workora'}
+          </span>
+          <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-[#F5F7FA] dark:bg-gray-800 rounded-md">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-[#9CA3AF] dark:text-gray-500 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow-sm">Ctrl</kbd>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-[#9CA3AF] dark:text-gray-500 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow-sm">K</kbd>
+            <span className="text-[10px] text-[#9CA3AF] dark:text-gray-500 ml-1">to search</span>
           </div>
         </div>
       </div>
