@@ -7,6 +7,7 @@ import { useUIStore } from '@/stores';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { TimeTracker } from '@/components/ui/TimeTracker';
+import { AIAssistant } from '@/components/ui/AIAssistant';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -35,6 +36,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Global Time Tracker Widget */}
       <TimeTracker />
+
+      {/* Global AI Assistant */}
+      <AIAssistant />
     </div>
   );
 };

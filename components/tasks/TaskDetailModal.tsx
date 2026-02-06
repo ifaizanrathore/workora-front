@@ -63,12 +63,13 @@ import TrackTimeDropdown from './TrackTimeDropdown';
 import TaskItemsTabs from './TaskItemsTabs';
 import SetETADialog from './SetETADialog';
 import ETAExpiredDialog from './ETAExpiredDialog';
+import { AIPanel } from '@/components/panels/AIPanel';
 
 // ============================================================
 // Small Inline Helpers
 // ============================================================
 
-type RightPanelTab = 'activity' | 'hashtags' | 'documents' | 'comments';
+type RightPanelTab = 'activity' | 'hashtags' | 'documents' | 'comments' | 'ai';
 
 const TimeBox: React.FC<{ value: number; label: string; isOverdue?: boolean }> = ({ value, label, isOverdue }) => (
   <div className="text-center">
@@ -789,8 +790,13 @@ export const TaskDetailModal: React.FC = () => {
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               <button
-                onClick={() => toast('AI features coming soon!')}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] text-[#8C8C9A] dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-purple-400 hover:bg-[#F3F0FF] dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                onClick={() => setActiveRightTab('ai')}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] rounded-lg transition-colors',
+                  activeRightTab === 'ai'
+                    ? 'text-[#7C3AED] dark:text-purple-400 bg-[#F3F0FF] dark:bg-purple-900/30'
+                    : 'text-[#8C8C9A] dark:text-gray-500 hover:text-[#7C3AED] dark:hover:text-purple-400 hover:bg-[#F3F0FF] dark:hover:bg-purple-900/30'
+                )}
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 <span>Ask AI</span>
@@ -1138,6 +1144,7 @@ export const TaskDetailModal: React.FC = () => {
               {activeRightTab === 'hashtags' && <HashtagsPanel taskId={taskId} initialFilter={hashtagFilter} />}
               {activeRightTab === 'documents' && <LinksPanel taskId={taskId} />}
               {activeRightTab === 'comments' && <CommentsPanel taskId={taskId} />}
+              {activeRightTab === 'ai' && <AIPanel taskId={taskId} listId={listId} task={task} />}
 
             </div>
 
@@ -1161,6 +1168,12 @@ export const TaskDetailModal: React.FC = () => {
                 active={activeRightTab === 'documents'}
                 onClick={() => setActiveRightTab('documents')}
                 label="Docs"
+              />
+              <SidebarIcon
+                icon={<Sparkles className="h-4 w-4" />}
+                active={activeRightTab === 'ai'}
+                onClick={() => setActiveRightTab('ai')}
+                label="AI"
               />
               <div className="flex-1" />
               <SidebarIcon

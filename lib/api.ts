@@ -1050,6 +1050,13 @@ class ApiClient {
     });
   }
 
+  async aiChat(messages: Array<{ role: string; content: string }>, taskContext?: string) {
+    return this.request<{ content: string }>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages, taskContext }),
+    });
+  }
+
   // ============================================================
   // WORKORA: NOTIFICATIONS
   // ============================================================
