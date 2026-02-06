@@ -18,8 +18,18 @@ import { api } from '@/lib/api';
 import { formatTimeCompact, cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { useTaskSocket } from '@/hooks/useSocket';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useWorkspaceStore } from '@/stores';
 import { SkeletonHashtagsPanel } from '@/components/ui/skeleton';
+import toast from 'react-hot-toast';
+import type { User } from '@/types';
+
+// Common emoji list
+const EMOJI_LIST = [
+  { category: 'Smileys', emojis: ['😀', '😂', '😊', '🥰', '😎', '🤔', '😅', '😢', '😡', '🥳'] },
+  { category: 'Hands', emojis: ['👍', '👎', '👏', '🙌', '🤝', '✌️', '🤞', '💪', '👋', '🫡'] },
+  { category: 'Objects', emojis: ['🔥', '⭐', '💡', '🎯', '🚀', '✅', '❌', '⚡', '💬', '📌'] },
+  { category: 'Symbols', emojis: ['❤️', '💜', '💚', '🏆', '🎉', '📎', '🔗', '⏰', '📝', '🏷️'] },
+];
 
 interface HashtagsPanelProps {
   taskId: string;
@@ -88,9 +98,20 @@ export const HashtagsPanel: React.FC<HashtagsPanelProps> = ({ taskId, initialFil
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
+  const mentionRef = useRef<HTMLDivElement>(null);
+
+  // Icon functionality state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showMentionList, setShowMentionList] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [members, setMembers] = useState<User[]>([]);
 
   // Get current user from auth store
   const currentUser = useAuthStore((state) => state.user);
+  const { currentWorkspace } = useWorkspaceStore();
 
   // WebSocket connection for real-time updates
   const { isConnected, activities } = useTaskSocket(taskId);
@@ -268,6 +289,89 @@ export const HashtagsPanel: React.FC<HashtagsPanelProps> = ({ taskId, initialFil
     }
   };
 
+  // Fetch members for @mention
+  useEffect(() => {
+    if (!currentWorkspace?.id) return;
+    const fetchMembers = async () => {
+      try {
+        const data = await api.getMembers(currentWorkspace.id);
+        setMembers(Array.isArray(data) ? data : []);
+      } catch {
+        // Members not available
+      }
+    };
+    fetchMembers();
+  }, [currentWorkspace?.id]);
+
+  // Close popovers on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+      if (mentionRef.current && !mentionRef.current.contains(e.target as Node)) {
+        setShowMentionList(false);
+        setMentionSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const insertAtCursor = useCallback((text: string) => {
+    const textarea = inputRef.current;
+    if (!textarea) {
+      setCommentText((prev) => prev + text);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const current = commentText;
+    const newValue = current.slice(0, start) + text + current.slice(end);
+    setCommentText(newValue);
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    });
+  }, [commentText]);
+
+  const handleEmojiSelect = useCallback((emoji: string) => {
+    insertAtCursor(emoji);
+    setShowEmojiPicker(false);
+  }, [insertAtCursor]);
+
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !taskId) return;
+    setIsUploading(true);
+    try {
+      await api.uploadAttachment(taskId, file);
+      toast.success(`Uploaded: ${file.name}`);
+      insertAtCursor(`[📎 ${file.name}] `);
+    } catch {
+      toast.error('Failed to upload file');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [taskId, insertAtCursor]);
+
+  const handleMentionSelect = useCallback((user: User) => {
+    insertAtCursor(`@${user.username || user.email || 'user'} `);
+    setShowMentionList(false);
+    setMentionSearch('');
+  }, [insertAtCursor]);
+
+  const handleHashtagInsert = useCallback(() => {
+    insertAtCursor('#');
+  }, [insertAtCursor]);
+
+  const filteredMembers = members.filter((m) => {
+    if (!mentionSearch) return true;
+    const q = mentionSearch.toLowerCase();
+    return (m.username?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q));
+  });
+
   if (isLoading) {
     return <SkeletonHashtagsPanel />;
   }
@@ -395,17 +499,113 @@ export const HashtagsPanel: React.FC<HashtagsPanelProps> = ({ taskId, initialFil
             rows={2}
           />
           <div className="flex items-center justify-between px-3 py-2 bg-[#FAFBFC] border-t border-[#F3F4F6]">
-            <div className="flex items-center gap-2">
-              <button className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F5F5F7] rounded transition-colors">
-                <Smile className="h-4 w-4" />
+            <div className="flex items-center gap-2 relative">
+              {/* Emoji Picker */}
+              <div ref={emojiRef} className="relative">
+                <button
+                  onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowMentionList(false); }}
+                  className={cn(
+                    'p-1.5 rounded transition-colors',
+                    showEmojiPicker ? 'text-[#7C3AED] bg-[#F3F0FF]' : 'text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F5F5F7]'
+                  )}
+                  title="Insert emoji"
+                >
+                  <Smile className="h-4 w-4" />
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full left-0 mb-2 w-[280px] bg-white rounded-xl shadow-xl border border-[#E5E7EB] p-3 z-50">
+                    {EMOJI_LIST.map((group) => (
+                      <div key={group.category} className="mb-2 last:mb-0">
+                        <p className="text-[10px] font-medium text-[#9CA3AF] mb-1 uppercase tracking-wide">{group.category}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {group.emojis.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => handleEmojiSelect(emoji)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#F3F0FF] text-lg transition-colors"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* File Attachment */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className={cn(
+                  'p-1.5 rounded transition-colors',
+                  isUploading ? 'text-[#7C3AED]' : 'text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F5F5F7]'
+                )}
+                title="Attach file"
+              >
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
               </button>
-              <button className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F5F5F7] rounded transition-colors">
-                <Paperclip className="h-4 w-4" />
-              </button>
-              <button className="p-1.5 text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F5F5F7] rounded transition-colors">
-                <AtSign className="h-4 w-4" />
-              </button>
-              <button className="p-1.5 text-[#9CA3AF] hover:text-[#7C3AED] hover:bg-[#F3F0FF] rounded transition-colors">
+
+              {/* @Mention */}
+              <div ref={mentionRef} className="relative">
+                <button
+                  onClick={() => { setShowMentionList(!showMentionList); setShowEmojiPicker(false); }}
+                  className={cn(
+                    'p-1.5 rounded transition-colors',
+                    showMentionList ? 'text-[#7C3AED] bg-[#F3F0FF]' : 'text-[#9CA3AF] hover:text-[#6B7280] hover:bg-[#F5F5F7]'
+                  )}
+                  title="Mention someone"
+                >
+                  <AtSign className="h-4 w-4" />
+                </button>
+                {showMentionList && (
+                  <div className="absolute bottom-full left-0 mb-2 w-[220px] bg-white rounded-xl shadow-xl border border-[#E5E7EB] z-50 overflow-hidden">
+                    <div className="p-2 border-b border-[#F3F4F6]">
+                      <input
+                        type="text"
+                        value={mentionSearch}
+                        onChange={(e) => setMentionSearch(e.target.value)}
+                        placeholder="Search members..."
+                        className="w-full px-2 py-1.5 text-xs bg-[#F5F5F7] rounded-md focus:outline-none text-[#1A1A2E] placeholder-[#9CA3AF]"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-[180px] overflow-y-auto py-1">
+                      {filteredMembers.length > 0 ? (
+                        filteredMembers.map((member) => (
+                          <button
+                            key={member.id}
+                            onClick={() => handleMentionSelect(member)}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-[#F5F5F7] transition-colors text-left"
+                          >
+                            <Avatar name={member.username || member.email || 'U'} src={member.profilePicture} size="xs" />
+                            <div className="min-w-0">
+                              <p className="text-xs font-medium text-[#1A1A2E] truncate">{member.username || 'User'}</p>
+                              {member.email && <p className="text-[10px] text-[#9CA3AF] truncate">{member.email}</p>}
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <p className="text-xs text-[#9CA3AF] text-center py-3">No members found</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Hashtag Insertion */}
+              <button
+                onClick={handleHashtagInsert}
+                className="p-1.5 text-[#9CA3AF] hover:text-[#7C3AED] hover:bg-[#F3F0FF] rounded transition-colors"
+                title="Insert hashtag"
+              >
                 <Hash className="h-4 w-4" />
               </button>
             </div>

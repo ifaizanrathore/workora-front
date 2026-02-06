@@ -24,7 +24,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <input
           type={type}
           className={cn(
-            'flex h-9 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
+            'flex h-9 w-full rounded-md border border-border bg-white dark:bg-gray-800 px-3 py-2 text-sm text-text-primary dark:text-white placeholder:text-text-tertiary dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors',
             leftIcon && 'pl-10',
             rightIcon && 'pr-10',
             error && 'border-error focus:ring-error/20 focus:border-error',
@@ -67,7 +67,7 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           type="text"
           value={value}
           className={cn(
-            'h-9 w-full rounded-full border border-border bg-white pl-10 pr-20 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
+            'h-9 w-full rounded-full border border-border bg-white dark:bg-gray-800 pl-10 pr-20 text-sm text-text-primary dark:text-white placeholder:text-text-tertiary dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors',
             className
           )}
           {...props}
@@ -107,7 +107,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       <div className="relative w-full">
         <textarea
           className={cn(
-            'flex min-h-[80px] w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 resize-none transition-colors',
+            'flex min-h-[80px] w-full rounded-md border border-border bg-white dark:bg-gray-800 px-3 py-2 text-sm text-text-primary dark:text-white placeholder:text-text-tertiary dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 resize-none transition-colors',
             error && 'border-error focus:ring-error/20 focus:border-error',
             className
           )}

@@ -100,7 +100,8 @@ export const Header: React.FC = () => {
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
-          className="flex items-center justify-center w-9 h-9 rounded-full text-[#9CA3AF] hover:bg-[#F5F7FA] dark:hover:bg-gray-800 hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors"
+          className="flex items-center justify-center w-9 h-9 rounded-full text-[#9CA3AF] hover:bg-[#F5F7FA] dark:hover:bg-gray-800 hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-[#6E62E5]/30"
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {isDark ? <Sun className="h-5 w-5" strokeWidth={1.5} /> : <Moon className="h-5 w-5" strokeWidth={1.5} />}
@@ -109,7 +110,8 @@ export const Header: React.FC = () => {
         {/* Keyboard Shortcuts */}
         <button
           onClick={() => setShowShortcutsHint(!showShortcutsHint)}
-          className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-[#9CA3AF] hover:bg-[#F5F7FA] dark:hover:bg-gray-800 hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors"
+          className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-[#9CA3AF] hover:bg-[#F5F7FA] dark:hover:bg-gray-800 hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-[#6E62E5]/30"
+          aria-label="Keyboard shortcuts"
           title="Keyboard shortcuts (Shift + ?)"
         >
           <Keyboard className="h-5 w-5" strokeWidth={1.5} />
@@ -117,7 +119,8 @@ export const Header: React.FC = () => {
 
         {/* Help Button */}
         <button
-          className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-[#9CA3AF] hover:bg-[#F5F7FA] dark:hover:bg-gray-800 hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors"
+          className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-[#9CA3AF] hover:bg-[#F5F7FA] dark:hover:bg-gray-800 hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-[#6E62E5]/30"
+          aria-label="Help and support"
           title="Help & Support"
         >
           <HelpCircle className="h-5 w-5" strokeWidth={1.5} />
@@ -128,9 +131,12 @@ export const Header: React.FC = () => {
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className={cn(
-              'flex items-center gap-1 sm:gap-1.5 p-1 rounded-full transition-colors',
+              'flex items-center gap-1 sm:gap-1.5 p-1 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#6E62E5]/30',
               isDropdownOpen ? 'bg-[#F5F7FA] dark:bg-gray-800' : 'hover:bg-[#F5F7FA] dark:hover:bg-gray-800'
             )}
+            aria-label="User menu"
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="menu"
           >
             {/* Avatar */}
             {user?.profilePicture ? (

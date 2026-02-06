@@ -30,13 +30,13 @@ const FeatureCard = ({ icon: Icon, title, description }: {
   title: string;
   description: string;
 }) => (
-  <div className="flex items-start gap-4 p-4 rounded-xl bg-white/50 backdrop-blur-sm border border-white/20">
-    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
+  <div className="flex items-start gap-4 p-4 rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-sm border border-white/20 dark:border-white/10">
+    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary dark:text-primary-light">
       <Icon className="w-5 h-5" />
     </div>
     <div>
-      <h3 className="font-semibold text-text-primary">{title}</h3>
-      <p className="text-sm text-text-secondary mt-0.5">{description}</p>
+      <h3 className="font-semibold text-text-primary dark:text-white">{title}</h3>
+      <p className="text-sm text-text-secondary dark:text-gray-400 mt-0.5">{description}</p>
     </div>
   </div>
 );
@@ -77,9 +77,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-background">
       {/* Left Side - Branding & Features */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary-hover to-purple-700 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary-hover to-purple-700 dark:from-[#2D2573] dark:via-[#3B2F8A] dark:to-[#1E1650] p-12 flex-col justify-between relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl" />
@@ -148,22 +148,22 @@ export default function LoginPage() {
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
             <WorkoraLogo size={48} />
             <div>
-              <h1 className="text-xl font-bold text-text-primary">Workora</h1>
-              <p className="text-text-secondary text-sm">1.0V</p>
+              <h1 className="text-xl font-bold text-text-primary dark:text-white">Workora</h1>
+              <p className="text-text-secondary dark:text-gray-400 text-sm">1.0V</p>
             </div>
           </div>
 
           {/* Welcome Text */}
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold text-text-primary">Welcome back</h2>
-            <p className="text-text-secondary mt-2">
+            <h2 className="text-3xl font-bold text-text-primary dark:text-white">Welcome back</h2>
+            <p className="text-text-secondary dark:text-gray-400 mt-2">
               Sign in to access your workspace and tasks
             </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="p-4 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
+            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 text-red-600 dark:text-red-400 text-sm">
               {error}
             </div>
           )}
@@ -181,11 +181,11 @@ export default function LoginPage() {
               {!isLoading && <ArrowRight className="w-4 h-4 ml-auto" />}
             </Button>
 
-            <p className="text-center text-sm text-text-tertiary">
+            <p className="text-center text-sm text-text-tertiary dark:text-gray-500">
               By signing in, you agree to our{' '}
-              <a href="#" className="text-primary hover:underline">Terms of Service</a>
+              <a href="#" className="text-primary dark:text-primary-light hover:underline">Terms of Service</a>
               {' '}and{' '}
-              <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+              <a href="#" className="text-primary dark:text-primary-light hover:underline">Privacy Policy</a>
             </p>
           </div>
 
@@ -195,7 +195,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="px-2 bg-background text-text-tertiary">
+              <span className="px-2 bg-background text-text-tertiary dark:text-gray-500">
                 Powered by ClickUp OAuth
               </span>
             </div>

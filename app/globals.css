@@ -59,11 +59,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    @apply bg-gray-300 dark:bg-gray-700 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+    @apply bg-gray-400 dark:bg-gray-600;
   }
 
   .dark {
@@ -112,29 +112,29 @@
   }
 
   .btn-secondary {
-    @apply btn bg-white text-foreground border border-border hover:bg-gray-50;
+    @apply btn bg-white dark:bg-gray-800 text-foreground border border-border hover:bg-gray-50 dark:hover:bg-gray-700;
   }
 
   .btn-ghost {
-    @apply btn bg-transparent text-muted-foreground hover:bg-gray-100 hover:text-foreground;
+    @apply btn bg-transparent text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-foreground;
   }
 
   .btn-danger {
-    @apply btn bg-destructive text-white hover:bg-red-600;
+    @apply btn bg-destructive text-white hover:bg-red-600 dark:hover:bg-red-700;
   }
 
   /* ============================================================
      CARD STYLES
      ============================================================ */
   .card {
-    @apply bg-card rounded-lg border border-border shadow-sm;
+    @apply bg-card dark:bg-gray-900 rounded-lg border border-border shadow-sm;
   }
 
   /* ============================================================
      INPUT STYLES
      ============================================================ */
   .input {
-    @apply w-full px-3 py-2 rounded-md border border-border bg-white text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors;
+    @apply w-full px-3 py-2 rounded-md border border-border bg-white dark:bg-gray-800 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors;
   }
 
   /* ============================================================
@@ -145,26 +145,26 @@
   }
 
   .badge-urgent {
-    @apply badge bg-red-100 text-red-700;
+    @apply badge bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400;
   }
 
   .badge-high {
-    @apply badge bg-amber-100 text-amber-700;
+    @apply badge bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400;
   }
 
   .badge-normal {
-    @apply badge bg-blue-100 text-blue-700;
+    @apply badge bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400;
   }
 
   .badge-low {
-    @apply badge bg-green-100 text-green-700;
+    @apply badge bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400;
   }
 
   /* ============================================================
      TAG STYLES
      ============================================================ */
   .tag {
-    @apply inline-flex items-center px-2 py-1 rounded bg-purple-100 text-purple-700 text-xs font-medium;
+    @apply inline-flex items-center px-2 py-1 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium;
   }
 
   /* ============================================================
@@ -205,7 +205,7 @@
      SIDEBAR STYLES
      ============================================================ */
   .sidebar-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-gray-100 hover:text-foreground transition-colors cursor-pointer;
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-foreground transition-colors cursor-pointer;
   }
 
   .sidebar-item-active {
@@ -264,42 +264,42 @@
   
   /* Task row base */
   .task-row {
-    @apply flex items-center border-b border-gray-100 bg-white transition-all;
+    @apply flex items-center border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 transition-all;
   }
 
   .task-row:hover {
-    @apply bg-gray-50/50;
+    @apply bg-gray-50/50 dark:bg-gray-800/50;
   }
 
   .task-row.dragging {
-    @apply opacity-50 bg-purple-50;
+    @apply opacity-50 bg-purple-50 dark:bg-purple-900/20;
   }
 
   .task-row.selected {
-    @apply bg-purple-50/50;
+    @apply bg-purple-50/50 dark:bg-purple-900/20;
   }
 
   /* Inline edit input */
   .inline-edit-input {
-    @apply w-full px-2 py-1 text-sm border border-purple-400 rounded outline-none bg-white;
+    @apply w-full px-2 py-1 text-sm border border-purple-400 dark:border-purple-600 rounded outline-none bg-white dark:bg-gray-800 dark:text-white;
   }
 
   .inline-edit-input:focus {
-    @apply ring-2 ring-purple-200;
+    @apply ring-2 ring-purple-200 dark:ring-purple-800;
   }
 
   /* Dropdown menu */
   .dropdown-menu {
-    @apply absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1;
+    @apply absolute z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1;
     animation: dropdownIn 0.15s ease-out;
   }
 
   .dropdown-item {
-    @apply w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-2;
+    @apply w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2;
   }
 
   .dropdown-item-danger {
-    @apply dropdown-item hover:bg-red-50 text-red-600;
+    @apply dropdown-item hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400;
   }
 }
 

@@ -86,6 +86,49 @@ const CLICKUP_PRIORITIES = [
 ];
 
 // ============================================================
+// CONFIRM MODAL
+// ============================================================
+
+const ConfirmModal: React.FC<{
+  open: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ open, title, message, confirmLabel = 'Delete', onConfirm, onCancel }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-sm mx-4 p-6 animate-in fade-in zoom-in-95">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h3>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 ml-[52px]">{message}</p>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
 // VIEW TABS
 // ============================================================
 
@@ -132,13 +175,11 @@ const ViewTabs: React.FC<{ current: string; onChange: (v: string) => void }> = (
 const TopToolbar: React.FC<{
   listName: string;
   onAddTask?: () => void;
-  showSearch: boolean;
-  onSearchToggle: () => void;
   showHidePanel: boolean;
   onHideToggle: () => void;
   currentView: string;
   onViewChange: (v: string) => void;
-}> = ({ listName, onAddTask, showSearch, onSearchToggle, showHidePanel, onHideToggle, currentView, onViewChange }) => {
+}> = ({ listName, onAddTask, showHidePanel, onHideToggle, currentView, onViewChange }) => {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 transition-colors">
       <div className="flex items-center gap-4">
@@ -151,13 +192,6 @@ const TopToolbar: React.FC<{
         <ViewTabs current={currentView} onChange={onViewChange} />
       </div>
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={onSearchToggle}
-          className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showSearch ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}
-        >
-          <Search className="h-4 w-4" />
-          <span className="hidden sm:inline">Search</span>
-        </button>
         <button
           onClick={onHideToggle}
           className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-sm rounded-md transition-colors', showHidePanel ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800')}
@@ -183,24 +217,63 @@ const TopToolbar: React.FC<{
 };
 
 // ============================================================
+// FILTER TYPES
+// ============================================================
+
+interface TaskFilterState {
+  status: string[];
+  priority: string[];
+  assignee: string[];
+  tags: string[];
+  dueDate: 'overdue' | 'today' | 'this_week' | 'next_week' | null;
+}
+
+const EMPTY_FILTERS: TaskFilterState = { status: [], priority: [], assignee: [], tags: [], dueDate: null };
+
+type FilterCategory = 'status' | 'priority' | 'assignee' | 'dueDate' | 'tags';
+
+const DUE_DATE_OPTIONS = [
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'today', label: 'Today' },
+  { id: 'this_week', label: 'This Week' },
+  { id: 'next_week', label: 'Next Week' },
+] as const;
+
+// ============================================================
 // FILTER ROW
 // ============================================================
 
 const FilterRow: React.FC<{
   groupBy: 'status' | 'priority' | 'assignee' | 'none';
   onGroupByChange: (g: 'status' | 'priority' | 'assignee' | 'none') => void;
-  searchQuery: string;
-  onSearch: (q: string) => void;
   showClosed: boolean;
   onToggleClosed: () => void;
   showSearch: boolean;
   filterCount?: number;
-}> = ({ groupBy, onGroupByChange, searchQuery, onSearch, showClosed, onToggleClosed, showSearch, filterCount = 0 }) => {
+  filters: TaskFilterState;
+  onFiltersChange: (f: TaskFilterState) => void;
+  statuses: StatusOption[];
+  priorities: typeof CLICKUP_PRIORITIES;
+  members: AvailableUser[];
+  spaceTags: { name: string; tag_bg?: string; tag_fg?: string }[];
+  showSubtasks: boolean;
+  onToggleSubtasks: () => void;
+  onSearchToggle: () => void;
+}> = ({ groupBy, onGroupByChange, showClosed, onToggleClosed, showSearch, filterCount = 0, filters, onFiltersChange, statuses, priorities, members, spaceTags, showSubtasks, onToggleSubtasks, onSearchToggle }) => {
   const [showGroupDD, setShowGroupDD] = useState(false);
+  const [showFilterDD, setShowFilterDD] = useState(false);
+  const [showAssigneeDD, setShowAssigneeDD] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<FilterCategory>('status');
   const ref = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const assigneeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setShowGroupDD(false); };
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShowGroupDD(false);
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilterDD(false);
+      if (assigneeRef.current && !assigneeRef.current.contains(e.target as Node)) setShowAssigneeDD(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
@@ -213,6 +286,26 @@ const FilterRow: React.FC<{
   ] as const;
 
   const currentLabel = groupOpts.find((g) => g.id === groupBy)?.label || 'Status';
+
+  const toggleFilterValue = (category: 'status' | 'priority' | 'assignee' | 'tags', value: string) => {
+    const current = filters[category];
+    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+    onFiltersChange({ ...filters, [category]: next });
+  };
+
+  const setDueDateFilter = (value: TaskFilterState['dueDate']) => {
+    onFiltersChange({ ...filters, dueDate: filters.dueDate === value ? null : value });
+  };
+
+  const clearAllFilters = () => onFiltersChange(EMPTY_FILTERS);
+
+  const categories: { id: FilterCategory; label: string; icon: React.ReactNode; count: number }[] = [
+    { id: 'status', label: 'Status', icon: <CircleDot className="h-3.5 w-3.5" />, count: filters.status.length },
+    { id: 'priority', label: 'Priority', icon: <Flag className="h-3.5 w-3.5" />, count: filters.priority.length },
+    { id: 'assignee', label: 'Assignee', icon: <Users className="h-3.5 w-3.5" />, count: filters.assignee.length },
+    { id: 'dueDate', label: 'Due Date', icon: <Calendar className="h-3.5 w-3.5" />, count: filters.dueDate ? 1 : 0 },
+    { id: 'tags', label: 'Tags', icon: <Tag className="h-3.5 w-3.5" />, count: filters.tags.length },
+  ];
 
   return (
     <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 transition-colors">
@@ -243,17 +336,198 @@ const FilterRow: React.FC<{
           )}
         </div>
 
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-          <ListTree className="h-3.5 w-3.5 text-gray-400" />
+        <button
+          onClick={onToggleSubtasks}
+          className={cn(
+            'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors',
+            showSubtasks
+              ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700'
+              : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+          )}
+        >
+          <ListTree className="h-3.5 w-3.5" />
           Subtasks
         </button>
       </div>
 
       <div className="flex items-center gap-1.5">
-        <button className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', filterCount > 0 ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700' : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700')}>
-          <Filter className="h-3.5 w-3.5" />
-          {filterCount > 0 ? `${filterCount} Filter` : 'Filter'}
+        {/* Search Toggle */}
+        <button
+          onClick={onSearchToggle}
+          className={cn(
+            'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors',
+            showSearch
+              ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700'
+              : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+          )}
+        >
+          <Search className="h-3.5 w-3.5" />
+          Search
         </button>
+
+        {/* Filter Button + Dropdown */}
+        <div className="relative" ref={filterRef}>
+          <button
+            onClick={() => setShowFilterDD(!showFilterDD)}
+            className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors', filterCount > 0 ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700' : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700')}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            {filterCount > 0 ? `${filterCount} Filter${filterCount > 1 ? 's' : ''}` : 'Filter'}
+          </button>
+
+          {/* Filter Dropdown Panel */}
+          {showFilterDD && (
+            <div className="absolute top-full right-0 mt-1 w-[420px] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 z-50 overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">Filters</span>
+                {filterCount > 0 && (
+                  <button onClick={clearAllFilters} className="text-xs text-purple-600 dark:text-purple-400 hover:underline">
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div className="flex" style={{ minHeight: 240 }}>
+                {/* Left: Categories */}
+                <div className="w-[140px] border-r border-gray-100 dark:border-gray-700 py-1">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={cn(
+                        'flex items-center gap-2 w-full px-3 py-2 text-xs font-medium transition-colors',
+                        activeCategory === cat.id
+                          ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      )}
+                    >
+                      {cat.icon}
+                      <span className="flex-1 text-left">{cat.label}</span>
+                      {cat.count > 0 && (
+                        <span className="w-4 h-4 flex items-center justify-center bg-purple-600 text-white text-[9px] font-bold rounded-full">
+                          {cat.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right: Options */}
+                <div className="flex-1 py-1 overflow-y-auto max-h-[280px]">
+                  {/* Status Options */}
+                  {activeCategory === 'status' && (
+                    statuses.length > 0 ? statuses.map((s) => {
+                      const val = s.status?.toLowerCase() || '';
+                      const checked = filters.status.includes(val);
+                      return (
+                        <button
+                          key={String(s.id ?? s.status)}
+                          onClick={() => toggleFilterValue('status', val)}
+                          className={cn('flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors', checked && 'bg-purple-50/50 dark:bg-purple-900/20')}
+                        >
+                          <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center transition-colors', checked ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-500')}>
+                            {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                          </div>
+                          <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color || '#87909e' }} />
+                          <span className="text-gray-700 dark:text-gray-300 capitalize">{s.status}</span>
+                        </button>
+                      );
+                    }) : <div className="px-3 py-4 text-xs text-gray-400 dark:text-gray-500 text-center">No statuses available</div>
+                  )}
+
+                  {/* Priority Options */}
+                  {activeCategory === 'priority' && (
+                    priorities.map((p) => {
+                      const val = p.id || 'none';
+                      const checked = filters.priority.includes(val);
+                      return (
+                        <button
+                          key={val}
+                          onClick={() => toggleFilterValue('priority', val)}
+                          className={cn('flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors', checked && 'bg-purple-50/50 dark:bg-purple-900/20')}
+                        >
+                          <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center transition-colors', checked ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-500')}>
+                            {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                          </div>
+                          <Flag className="h-3.5 w-3.5 flex-shrink-0" style={{ color: p.color }} />
+                          <span className="text-gray-700 dark:text-gray-300 capitalize">{p.priority === 'none' ? 'No priority' : p.priority}</span>
+                        </button>
+                      );
+                    })
+                  )}
+
+                  {/* Assignee Options */}
+                  {activeCategory === 'assignee' && (
+                    members.length > 0 ? members.map((m) => {
+                      const val = String(m.id);
+                      const checked = filters.assignee.includes(val);
+                      return (
+                        <button
+                          key={val}
+                          onClick={() => toggleFilterValue('assignee', val)}
+                          className={cn('flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors', checked && 'bg-purple-50/50 dark:bg-purple-900/20')}
+                        >
+                          <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center transition-colors', checked ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-500')}>
+                            {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                          </div>
+                          {m.profilePicture ? (
+                            <img src={m.profilePicture} className="w-5 h-5 rounded-full flex-shrink-0" alt="" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                              {(m.username || m.email || '?')[0].toUpperCase()}
+                            </div>
+                          )}
+                          <span className="text-gray-700 dark:text-gray-300">{m.username || m.email}</span>
+                        </button>
+                      );
+                    }) : <div className="px-3 py-4 text-xs text-gray-400 dark:text-gray-500 text-center">No members available</div>
+                  )}
+
+                  {/* Due Date Options */}
+                  {activeCategory === 'dueDate' && (
+                    DUE_DATE_OPTIONS.map((opt) => {
+                      const checked = filters.dueDate === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => setDueDateFilter(opt.id)}
+                          className={cn('flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors', checked && 'bg-purple-50/50 dark:bg-purple-900/20')}
+                        >
+                          <div className={cn('w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors', checked ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-500')}>
+                            {checked && <div className="w-2 h-2 rounded-full bg-white" />}
+                          </div>
+                          <Calendar className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                          <span className="text-gray-700 dark:text-gray-300">{opt.label}</span>
+                        </button>
+                      );
+                    })
+                  )}
+
+                  {/* Tags Options */}
+                  {activeCategory === 'tags' && (
+                    spaceTags.length > 0 ? spaceTags.map((t) => {
+                      const checked = filters.tags.includes(t.name);
+                      return (
+                        <button
+                          key={t.name}
+                          onClick={() => toggleFilterValue('tags', t.name)}
+                          className={cn('flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors', checked && 'bg-purple-50/50 dark:bg-purple-900/20')}
+                        >
+                          <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center transition-colors', checked ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-500')}>
+                            {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                          </div>
+                          <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: t.tag_bg || '#7C3AED' }} />
+                          <span className="text-gray-700 dark:text-gray-300">{t.name}</span>
+                        </button>
+                      );
+                    }) : <div className="px-3 py-4 text-xs text-gray-400 dark:text-gray-500 text-center">No tags available</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <button
           onClick={onToggleClosed}
@@ -263,30 +537,136 @@ const FilterRow: React.FC<{
           Closed
         </button>
 
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-          <Users className="h-3.5 w-3.5 text-gray-400" />
-          Assignee
-        </button>
-
-        {showSearch && (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => onSearch(e.target.value)}
-              autoFocus
-              className="w-44 h-8 pl-8 pr-8 text-sm border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-            />
-            {searchQuery && (
-              <button onClick={() => onSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <X className="h-3.5 w-3.5" />
-              </button>
+        {/* Assignee Quick Filter */}
+        <div className="relative" ref={assigneeRef}>
+          <button
+            onClick={() => setShowAssigneeDD(!showAssigneeDD)}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md border transition-colors',
+              filters.assignee.length > 0
+                ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700'
+                : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
             )}
-          </div>
-        )}
+          >
+            <Users className="h-3.5 w-3.5" />
+            Assignee
+            {filters.assignee.length > 0 && (
+              <span className="w-4 h-4 flex items-center justify-center bg-purple-600 text-white text-[9px] font-bold rounded-full">
+                {filters.assignee.length}
+              </span>
+            )}
+          </button>
+          {showAssigneeDD && (
+            <div className="absolute top-full right-0 mt-1 w-[220px] bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 z-50 overflow-hidden">
+              <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                <span className="text-xs font-semibold text-gray-900 dark:text-white">Filter by Assignee</span>
+              </div>
+              <div className="py-1 max-h-[240px] overflow-y-auto">
+                {members.length > 0 ? members.map((m) => {
+                  const val = String(m.id);
+                  const checked = filters.assignee.includes(val);
+                  return (
+                    <button
+                      key={val}
+                      onClick={() => {
+                        const current = filters.assignee;
+                        const next = current.includes(val) ? current.filter((v) => v !== val) : [...current, val];
+                        onFiltersChange({ ...filters, assignee: next });
+                      }}
+                      className={cn('flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors', checked && 'bg-purple-50/50 dark:bg-purple-900/20')}
+                    >
+                      <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center transition-colors', checked ? 'bg-purple-600 border-purple-600' : 'border-gray-300 dark:border-gray-500')}>
+                        {checked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                      </div>
+                      {m.profilePicture ? (
+                        <img src={m.profilePicture} className="w-5 h-5 rounded-full flex-shrink-0" alt="" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">
+                          {(m.username || m.email || '?')[0].toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-gray-700 dark:text-gray-300 truncate">{m.username || m.email}</span>
+                    </button>
+                  );
+                }) : (
+                  <div className="px-3 py-4 text-xs text-gray-400 dark:text-gray-500 text-center">No members available</div>
+                )}
+              </div>
+              {filters.assignee.length > 0 && (
+                <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700">
+                  <button
+                    onClick={() => onFiltersChange({ ...filters, assignee: [] })}
+                    className="text-xs text-purple-600 dark:text-purple-400 hover:underline"
+                  >
+                    Clear assignee filter
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
       </div>
+    </div>
+  );
+};
+
+// ============================================================
+// ACTIVE FILTER CHIPS
+// ============================================================
+
+const ActiveFilterChips: React.FC<{
+  filters: TaskFilterState;
+  onFiltersChange: (f: TaskFilterState) => void;
+  statuses: StatusOption[];
+  priorities: typeof CLICKUP_PRIORITIES;
+  members: AvailableUser[];
+}> = ({ filters, onFiltersChange, statuses, priorities, members }) => {
+  const chips: { key: string; label: string; color?: string; onRemove: () => void }[] = [];
+
+  filters.status.forEach((s) => {
+    const st = statuses.find((x) => x.status?.toLowerCase() === s);
+    chips.push({ key: `status-${s}`, label: st?.status || s, color: st?.color || undefined, onRemove: () => onFiltersChange({ ...filters, status: filters.status.filter((v) => v !== s) }) });
+  });
+  filters.priority.forEach((p) => {
+    const pr = priorities.find((x) => (x.id || 'none') === p);
+    chips.push({ key: `priority-${p}`, label: pr ? (pr.priority === 'none' ? 'No priority' : pr.priority) : p, color: pr?.color || undefined, onRemove: () => onFiltersChange({ ...filters, priority: filters.priority.filter((v) => v !== p) }) });
+  });
+  filters.assignee.forEach((a) => {
+    const m = members.find((x) => String(x.id) === a);
+    chips.push({ key: `assignee-${a}`, label: m?.username || m?.email || a, onRemove: () => onFiltersChange({ ...filters, assignee: filters.assignee.filter((v) => v !== a) }) });
+  });
+  filters.tags.forEach((t) => {
+    chips.push({ key: `tag-${t}`, label: t, onRemove: () => onFiltersChange({ ...filters, tags: filters.tags.filter((v) => v !== t) }) });
+  });
+  if (filters.dueDate) {
+    const dd = DUE_DATE_OPTIONS.find((x) => x.id === filters.dueDate);
+    chips.push({ key: 'dueDate', label: dd?.label || filters.dueDate, onRemove: () => onFiltersChange({ ...filters, dueDate: null }) });
+  }
+
+  if (chips.length === 0) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <span className="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase mr-1">Filters:</span>
+      {chips.map((chip) => (
+        <span
+          key={chip.key}
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-md"
+        >
+          {chip.color && <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: chip.color }} />}
+          <span className="capitalize">{chip.label}</span>
+          <button onClick={chip.onRemove} className="ml-0.5 text-purple-400 hover:text-purple-600 dark:hover:text-purple-200">
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <button
+        onClick={() => onFiltersChange(EMPTY_FILTERS)}
+        className="text-[10px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-1"
+      >
+        Clear all
+      </button>
     </div>
   );
 };
@@ -585,6 +965,22 @@ export const TaskList: React.FC<TaskListProps> = ({
   const [currentView, setCurrentView] = useState('list');
   const [showSearch, setShowSearch] = useState(false);
   const [showHidePanel, setShowHidePanel] = useState(false);
+  const [filters, setFilters] = useState<TaskFilterState>(EMPTY_FILTERS);
+  const [showSubtasks, setShowSubtasks] = useState(false);
+  const [subtasksMap, setSubtasksMap] = useState<Record<string, Task[]>>({});
+  const [loadingSubtasks, setLoadingSubtasks] = useState(false);
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [confirmModal, setConfirmModal] = useState<{ type: 'single' | 'bulk'; taskId?: string } | null>(null);
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (showSearch) {
+      // Small delay to ensure the input is rendered
+      const t = setTimeout(() => searchInputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+  }, [showSearch]);
 
   // Metadata
   const [statuses, setStatuses] = useState<StatusOption[]>([]);
@@ -671,6 +1067,40 @@ export const TaskList: React.FC<TaskListProps> = ({
     fetchAccountability().catch(() => {});
     return () => { cancelled = true; };
   }, [taskIds]);
+
+  // Fetch subtasks for all tasks when showSubtasks is toggled on
+  useEffect(() => {
+    if (!showSubtasks || tasks.length === 0) {
+      if (!showSubtasks) { setSubtasksMap({}); setExpandedParents(new Set()); }
+      return;
+    }
+    let cancelled = false;
+    setLoadingSubtasks(true);
+    const fetchAll = async () => {
+      const map: Record<string, Task[]> = {};
+      const parentIds = new Set<string>();
+      const batchSize = 5;
+      // Only fetch for tasks that are not subtasks themselves
+      const parentTasks = tasks.filter((t) => !t.parent);
+      for (let i = 0; i < parentTasks.length; i += batchSize) {
+        const batch = parentTasks.slice(i, i + batchSize);
+        const results = await Promise.allSettled(batch.map((t) => api.getSubtasks(t.id)));
+        results.forEach((r, idx) => {
+          if (r.status === 'fulfilled' && Array.isArray(r.value) && r.value.length > 0) {
+            map[batch[idx].id] = r.value;
+            parentIds.add(batch[idx].id);
+          }
+        });
+      }
+      if (!cancelled) {
+        setSubtasksMap(map);
+        setExpandedParents(parentIds); // expand all by default
+        setLoadingSubtasks(false);
+      }
+    };
+    fetchAll().catch(() => { if (!cancelled) setLoadingSubtasks(false); });
+    return () => { cancelled = true; };
+  }, [showSubtasks, taskIds]);
 
   // ============================================================
   // API HANDLERS (optimistic updates)
@@ -759,8 +1189,11 @@ export const TaskList: React.FC<TaskListProps> = ({
     if (ns) await handleStatusChange(taskId, ns);
   }, [tasks, statuses, handleStatusChange]);
 
-  const handleDelete = useCallback(async (taskId: string) => {
-    if (!confirm('Delete this task? This cannot be undone.')) return;
+  const handleDelete = useCallback((taskId: string) => {
+    setConfirmModal({ type: 'single', taskId });
+  }, []);
+
+  const executeDelete = useCallback(async (taskId: string) => {
     markUpdating(taskId);
     const prev = [...tasks];
     setTasks((t) => t.filter((x) => x.id !== taskId));
@@ -809,9 +1242,15 @@ export const TaskList: React.FC<TaskListProps> = ({
   }, [handleAddTag, handleRemoveTag, onTaskUpdate]);
 
   // Bulk handlers
-  const handleBulkDelete = useCallback(async () => {
+  const handleBulkDelete = useCallback(() => {
     const ids = Array.from(selectedSet);
-    if (!ids.length || !confirm(`Delete ${ids.length} task${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    if (!ids.length) return;
+    setConfirmModal({ type: 'bulk' });
+  }, [selectedSet]);
+
+  const executeBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedSet);
+    if (!ids.length) return;
     const prev = [...tasks];
     setTasks((t) => t.filter((x) => !selectedSet.has(x.id)));
     clearSelection();
@@ -853,6 +1292,13 @@ export const TaskList: React.FC<TaskListProps> = ({
     clearSelection();
   }, [selectedSet, handleDueDateChange, clearSelection]);
 
+  // Subtask counts computed from the tasks array (always available)
+  const subtaskCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    tasks.forEach((t) => { if (t.parent) map[t.parent] = (map[t.parent] || 0) + 1; });
+    return map;
+  }, [tasks]);
+
   // Sort / filter / group
   const handleSort = useCallback((col: string, dir: 'asc' | 'desc') => { setSortBy(col); setSortDirection(dir); }, []);
   const toggleGroup = useCallback((id: string) => { setCollapsedGroups((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }); }, []);
@@ -861,10 +1307,47 @@ export const TaskList: React.FC<TaskListProps> = ({
 
   const filteredTasks = useMemo(() => {
     let r = tasks;
-    if (searchQuery.trim()) { const q = searchQuery.toLowerCase(); r = r.filter((t) => t.name.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q)); }
+    // Hide subtasks unless toggled on
+    if (!showSubtasks) r = r.filter((t) => !t.parent);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      r = r.filter((t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.description?.toLowerCase().includes(q) ||
+        t.text_content?.toLowerCase().includes(q) ||
+        t.assignees?.some((a) => a.username?.toLowerCase().includes(q) || a.email?.toLowerCase().includes(q)) ||
+        t.tags?.some((tag) => tag.name?.toLowerCase().includes(q)) ||
+        t.status?.status?.toLowerCase().includes(q) ||
+        t.priority?.priority?.toLowerCase().includes(q) ||
+        t.custom_id?.toLowerCase().includes(q)
+      );
+    }
     if (!showClosed) r = r.filter((t) => !['closed', 'complete', 'done', 'completed'].includes(t.status?.status?.toLowerCase() || ''));
+    // Apply filters
+    if (filters.status.length) r = r.filter((t) => filters.status.includes(t.status?.status?.toLowerCase() || ''));
+    if (filters.priority.length) r = r.filter((t) => filters.priority.includes(String(t.priority?.id || 'none')));
+    if (filters.assignee.length) r = r.filter((t) => t.assignees?.some((a) => filters.assignee.includes(String(a.id))));
+    if (filters.tags.length) r = r.filter((t) => t.tags?.some((tag) => filters.tags.includes(tag.name)));
+    if (filters.dueDate) {
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const endOfDay = startOfDay + 86400000;
+      const endOfWeek = startOfDay + (7 - now.getDay()) * 86400000;
+      const endOfNextWeek = endOfWeek + 7 * 86400000;
+      r = r.filter((t) => {
+        if (!t.due_date) return false;
+        const due = typeof t.due_date === 'string' ? (parseInt(t.due_date) > 9999999999 ? parseInt(t.due_date) : parseInt(t.due_date) * 1000) : t.due_date;
+        switch (filters.dueDate) {
+          case 'overdue': return due < startOfDay;
+          case 'today': return due >= startOfDay && due < endOfDay;
+          case 'this_week': return due >= startOfDay && due < endOfWeek;
+          case 'next_week': return due >= endOfWeek && due < endOfNextWeek;
+          default: return true;
+        }
+      });
+    }
     return r;
-  }, [tasks, searchQuery, showClosed]);
+  }, [tasks, searchQuery, showClosed, filters, showSubtasks]);
 
   const sortedTasks = useMemo(() => {
     return [...filteredTasks].sort((a, b) => {
@@ -897,7 +1380,14 @@ export const TaskList: React.FC<TaskListProps> = ({
     return Array.from(groups.values());
   }, [sortedTasks, internalGroupBy, listName, listColor]);
 
-  const filterCount = useMemo(() => { let c = 0; if (searchQuery) c++; if (showClosed) c++; return c; }, [searchQuery, showClosed]);
+  const filterCount = useMemo(() => {
+    let c = 0;
+    if (searchQuery) c++;
+    if (showClosed) c++;
+    c += filters.status.length + filters.priority.length + filters.assignee.length + filters.tags.length;
+    if (filters.dueDate) c++;
+    return c;
+  }, [searchQuery, showClosed, filters]);
 
   // Selection helpers
   const allTaskIds = filteredTasks.map((t) => t.id);
@@ -920,8 +1410,6 @@ export const TaskList: React.FC<TaskListProps> = ({
       <TopToolbar
         listName={listName}
         onAddTask={onAddTask}
-        showSearch={showSearch}
-        onSearchToggle={() => setShowSearch(!showSearch)}
         showHidePanel={showHidePanel}
         onHideToggle={() => setShowHidePanel(!showHidePanel)}
         currentView={currentView}
@@ -931,13 +1419,82 @@ export const TaskList: React.FC<TaskListProps> = ({
       <FilterRow
         groupBy={internalGroupBy}
         onGroupByChange={handleGroupByChange}
-        searchQuery={searchQuery}
-        onSearch={setSearchQuery}
         showClosed={showClosed}
         onToggleClosed={() => setShowClosed(!showClosed)}
         showSearch={showSearch}
         filterCount={filterCount}
+        filters={filters}
+        onFiltersChange={setFilters}
+        statuses={statuses}
+        priorities={CLICKUP_PRIORITIES}
+        members={members}
+        spaceTags={spaceTags}
+        showSubtasks={showSubtasks}
+        onToggleSubtasks={() => setShowSubtasks(!showSubtasks)}
+        onSearchToggle={() => setShowSearch(!showSearch)}
       />
+
+      {/* ClickUp-style full-width search bar */}
+      {showSearch && (
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+          <div className="relative flex items-center w-full h-10 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors focus-within:border-purple-500 dark:focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-500/20">
+            <Search className="absolute left-3 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search tasks, assignees, tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearchQuery('');
+                  setShowSearch(false);
+                }
+              }}
+              className="w-full h-full pl-10 pr-20 bg-transparent text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
+            />
+            <div className="absolute right-3 flex items-center gap-1">
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}
+                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <div className="flex items-center gap-0.5 pointer-events-none">
+                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow-sm">
+                  Ctrl
+                </kbd>
+                <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded shadow-sm">
+                  K
+                </kbd>
+              </div>
+            </div>
+          </div>
+          {searchQuery && (
+            <div className="mt-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+              Searching across task names, descriptions, assignees, and tags
+            </div>
+          )}
+        </div>
+      )}
+
+      <ActiveFilterChips
+        filters={filters}
+        onFiltersChange={setFilters}
+        statuses={statuses}
+        priorities={CLICKUP_PRIORITIES}
+        members={members}
+      />
+
+      {/* Subtasks loading indicator */}
+      {loadingSubtasks && (
+        <div className="flex items-center gap-2 px-4 py-2 text-sm text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-100 dark:border-purple-800/30">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading subtasks...
+        </div>
+      )}
 
       {/* Scrollable list — flex-1 fills remaining height */}
       <div className="overflow-auto flex-1">
@@ -960,36 +1517,86 @@ export const TaskList: React.FC<TaskListProps> = ({
             )}
             {!collapsedGroups.has(group.id) && (
               <>
-                {group.tasks.map((task) => (
-                  <TaskRow
-                    key={task.id}
-                    task={task}
-                    accountability={accountabilityMap[task.id]}
-                    columns={columns}
-                    isSelected={selectedSet.has(task.id)}
-                    onSelect={handleSelect}
-                    onClick={handleTaskClick}
-                    onUpdate={handleGenericUpdate}
-                    onNameChange={handleNameChange}
-                    onStatusChange={handleStatusChange}
-                    onPriorityChange={handlePriorityChange}
-                    onDueDateChange={handleDueDateChange}
-                    onAssigneesChange={handleAssigneesChange}
-                    onTimerStart={handleTimerStart}
-                    onTimerStop={handleTimerStop}
-                    isTimerRunning={runningTimer?.taskId === task.id}
-                    timerElapsed={runningTimer?.taskId === task.id ? timerElapsed : 0}
-                    availableStatuses={statuses}
-                    availablePriorities={CLICKUP_PRIORITIES}
-                    availableUsers={members}
-                    availableTags={spaceTags}
-                    isUpdating={updatingTasks.has(task.id)}
-                    onComplete={handleComplete}
-                    onDelete={handleDelete}
-                    onDuplicate={handleDuplicate}
-                    onArchive={handleArchive}
-                  />
-                ))}
+                {group.tasks.map((task) => {
+                  const hasSubtasks = showSubtasks && subtasksMap[task.id]?.length > 0;
+                  const isExpanded = expandedParents.has(task.id);
+                  return (
+                    <React.Fragment key={task.id}>
+                      <div className="relative">
+                        {/* Expand/collapse chevron for parent tasks with subtasks */}
+                        {hasSubtasks && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setExpandedParents((prev) => { const n = new Set(prev); if (n.has(task.id)) n.delete(task.id); else n.add(task.id); return n; }); }}
+                            className="absolute left-1 top-1/2 -translate-y-1/2 z-10 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                            aria-label={isExpanded ? 'Collapse subtasks' : 'Expand subtasks'}
+                          >
+                            {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />}
+                          </button>
+                        )}
+                        <TaskRow
+                          task={task}
+                          accountability={accountabilityMap[task.id]}
+                          columns={columns}
+                          isSelected={selectedSet.has(task.id)}
+                          onSelect={handleSelect}
+                          onClick={handleTaskClick}
+                          onUpdate={handleGenericUpdate}
+                          onNameChange={handleNameChange}
+                          onStatusChange={handleStatusChange}
+                          onPriorityChange={handlePriorityChange}
+                          onDueDateChange={handleDueDateChange}
+                          onAssigneesChange={handleAssigneesChange}
+                          onTimerStart={handleTimerStart}
+                          onTimerStop={handleTimerStop}
+                          isTimerRunning={runningTimer?.taskId === task.id}
+                          timerElapsed={runningTimer?.taskId === task.id ? timerElapsed : 0}
+                          availableStatuses={statuses}
+                          availablePriorities={CLICKUP_PRIORITIES}
+                          availableUsers={members}
+                          availableTags={spaceTags}
+                          isUpdating={updatingTasks.has(task.id)}
+                          onComplete={handleComplete}
+                          onDelete={handleDelete}
+                          onDuplicate={handleDuplicate}
+                          onArchive={handleArchive}
+                          subtaskCount={subtasksMap[task.id]?.length || subtaskCountMap[task.id] || 0}
+                        />
+                      </div>
+                      {/* Render subtasks nested under parent */}
+                      {hasSubtasks && isExpanded && subtasksMap[task.id].map((sub) => (
+                        <TaskRow
+                          key={sub.id}
+                          task={sub}
+                          accountability={accountabilityMap[sub.id]}
+                          columns={columns}
+                          isSelected={selectedSet.has(sub.id)}
+                          onSelect={handleSelect}
+                          onClick={handleTaskClick}
+                          onUpdate={handleGenericUpdate}
+                          onNameChange={handleNameChange}
+                          onStatusChange={handleStatusChange}
+                          onPriorityChange={handlePriorityChange}
+                          onDueDateChange={handleDueDateChange}
+                          onAssigneesChange={handleAssigneesChange}
+                          onTimerStart={handleTimerStart}
+                          onTimerStop={handleTimerStop}
+                          isTimerRunning={runningTimer?.taskId === sub.id}
+                          timerElapsed={runningTimer?.taskId === sub.id ? timerElapsed : 0}
+                          availableStatuses={statuses}
+                          availablePriorities={CLICKUP_PRIORITIES}
+                          availableUsers={members}
+                          availableTags={spaceTags}
+                          isUpdating={updatingTasks.has(sub.id)}
+                          onComplete={handleComplete}
+                          onDelete={handleDelete}
+                          onDuplicate={handleDuplicate}
+                          onArchive={handleArchive}
+                          isSubtask
+                        />
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
                 <AddTaskRow columns={columns} onAdd={onAddTask || (() => {})} onQuickAdd={listId ? handleQuickAdd : undefined} />
               </>
             )}
@@ -1025,6 +1632,23 @@ export const TaskList: React.FC<TaskListProps> = ({
         onBulkDateChange={handleBulkDateChange}
         onBulkDelete={handleBulkDelete}
         onBulkDuplicate={handleBulkDuplicate}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        open={!!confirmModal}
+        title={confirmModal?.type === 'bulk' ? `Delete ${Array.from(selectedSet).length} task${Array.from(selectedSet).length > 1 ? 's' : ''}?` : 'Delete task?'}
+        message="This action cannot be undone. The task will be permanently removed."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (confirmModal?.type === 'single' && confirmModal.taskId) {
+            executeDelete(confirmModal.taskId);
+          } else if (confirmModal?.type === 'bulk') {
+            executeBulkDelete();
+          }
+          setConfirmModal(null);
+        }}
+        onCancel={() => setConfirmModal(null)}
       />
     </div>
   );

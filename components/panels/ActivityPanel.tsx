@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Lock, Globe } from 'lucide-react';
+import { Lock, Globe, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatTimeAgo } from '@/lib/utils';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SkeletonActivityPanel } from '@/components/ui/skeleton';
+import toast from 'react-hot-toast';
 
 interface ActivityPanelProps {
   taskId: string;
@@ -30,23 +31,27 @@ interface ActivityItem {
 export const ActivityPanel: React.FC<ActivityPanelProps> = ({ taskId }) => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchActivity = async () => {
+    if (!taskId) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await api.getTaskActivity(taskId);
+      setActivities(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error('Failed to fetch activity:', err);
+      setError('Failed to load activity');
+      toast.error('Failed to load activity');
+      setActivities([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchActivity = async () => {
-      if (!taskId) return;
-
-      setIsLoading(true);
-      try {
-        const data = await api.getTaskActivity(taskId);
-        setActivities(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error('Failed to fetch activity:', err);
-        setActivities([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchActivity();
   }, [taskId]);
 
@@ -163,6 +168,17 @@ export const ActivityPanel: React.FC<ActivityPanelProps> = ({ taskId }) => {
               </span>
             </div>
           ))
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-8 text-[#9CA3AF] dark:text-gray-500">
+            <p className="mb-2">{error}</p>
+            <button
+              onClick={fetchActivity}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#7C3AED] dark:text-purple-400 hover:bg-[#F3F0FF] dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Retry
+            </button>
+          </div>
         ) : (
           <div className="text-center py-8 text-[#9CA3AF] dark:text-gray-500">
             <p>No activity yet</p>

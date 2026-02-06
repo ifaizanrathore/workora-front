@@ -86,6 +86,8 @@ interface TaskRowProps {
   isUpdating?: boolean;
   onComplete?: (taskId: string) => Promise<void>;
   onArchive?: (taskId: string) => Promise<void>;
+  isSubtask?: boolean;
+  subtaskCount?: number;
 }
 
 // ============================================================
@@ -224,15 +226,8 @@ const NameCell: React.FC<{
   onStartEdit: () => void;
   onSave: (v: string) => void;
   onCancel: () => void;
-}> = ({ task, accountability, width, isEditing, onStartEdit, onSave, onCancel }) => {
-
-  const checklistProgress = useMemo(() => {
-    const cls = (task as any).checklists;
-    if (!cls?.length) return null;
-    let total = 0, done = 0;
-    cls.forEach((c: any) => c.items?.forEach((i: any) => { total++; if (i.resolved) done++; }));
-    return total > 0 ? { done, total } : null;
-  }, [(task as any).checklists]);
+  subtaskCount?: number;
+}> = ({ task, accountability, width, isEditing, onStartEdit, onSave, onCancel, subtaskCount = 0 }) => {
 
   const circleColor = (i: number) => {
     if (!accountability) return 'bg-gray-200';
@@ -280,8 +275,11 @@ const NameCell: React.FC<{
           ))}
         </div>
       )}
-      {checklistProgress && (
-        <span className="text-[11px] text-gray-400 dark:text-gray-500 flex-shrink-0 tabular-nums">☰ {checklistProgress.done}/{checklistProgress.total}</span>
+      {subtaskCount > 0 && (
+        <span className="text-[11px] text-gray-400 dark:text-gray-500 flex-shrink-0 tabular-nums flex items-center gap-0.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
+          {subtaskCount}
+        </span>
       )}
     </div>
   );
@@ -411,11 +409,11 @@ const DueDateCell: React.FC<{
     const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
     const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-    if (diffDays < 0) return { label: formatted, text: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500', level: 'overdue' as const };
-    if (diffDays === 0) return { label: 'Today', text: 'text-orange-600', bg: 'bg-orange-50', dot: 'bg-orange-500', level: 'today' as const };
-    if (diffDays === 1) return { label: 'Tomorrow', text: 'text-orange-500', bg: 'bg-transparent', dot: '', level: 'soon' as const };
-    if (diffDays <= 7) return { label: formatted, text: 'text-blue-600', bg: 'bg-transparent', dot: '', level: 'week' as const };
-    return { label: formatted, text: 'text-gray-600', bg: 'bg-transparent', dot: '', level: 'future' as const };
+    if (diffDays < 0) return { label: formatted, text: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', dot: 'bg-red-500', level: 'overdue' as const };
+    if (diffDays === 0) return { label: 'Today', text: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-900/20', dot: 'bg-orange-500', level: 'today' as const };
+    if (diffDays === 1) return { label: 'Tomorrow', text: 'text-orange-500 dark:text-orange-400', bg: 'bg-transparent', dot: '', level: 'soon' as const };
+    if (diffDays <= 7) return { label: formatted, text: 'text-blue-600 dark:text-blue-400', bg: 'bg-transparent', dot: '', level: 'week' as const };
+    return { label: formatted, text: 'text-gray-600 dark:text-gray-400', bg: 'bg-transparent', dot: '', level: 'future' as const };
   }, [value]);
 
   if (isEditing) {
@@ -769,6 +767,8 @@ export const TaskRow: React.FC<TaskRowProps> = React.memo(({
   isUpdating,
   onComplete,
   onArchive,
+  isSubtask,
+  subtaskCount = 0,
 }) => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [showActions, setShowActions] = useState(false);
@@ -778,16 +778,6 @@ export const TaskRow: React.FC<TaskRowProps> = React.memo(({
   const isDragging = draggedTaskId === task.id;
   const isDragOver = dragOverTaskId === task.id;
   const visibleCols = useMemo(() => columns.filter((c) => c.visible), [columns]);
-
-  // Priority left-border color
-  const priorityBorderColor = useMemo(() => {
-    const p = task.priority?.priority?.toLowerCase();
-    if (p === 'urgent') return '#F42A2A';
-    if (p === 'high') return '#FFCC00';
-    if (p === 'normal') return '#6B7AFF';
-    if (p === 'low') return '#808080';
-    return 'transparent';
-  }, [task.priority]);
 
   // Handle updates with specific handlers then fallback
   const handleUpdate = useCallback((field: string, value: any) => {
@@ -846,9 +836,10 @@ export const TaskRow: React.FC<TaskRowProps> = React.memo(({
         isDragOver && dragPosition === 'above' && 'border-t-2 border-t-purple-500',
         isDragOver && dragPosition === 'below' && 'border-b-2 border-b-purple-500',
         isSelected && 'bg-purple-50/60 dark:bg-purple-900/40',
-        isUpdating && 'opacity-60 pointer-events-none'
+        isUpdating && 'opacity-60 pointer-events-none',
+        isSubtask && 'bg-gray-50/50 dark:bg-gray-800/30'
       )}
-      style={{ borderLeft: `3px solid ${priorityBorderColor}` }}
+      style={{ paddingLeft: isSubtask ? 28 : undefined }}
       onClick={() => { if (!editingField) onClick?.(task); }}
       onDragOver={handleDragOver}
       onDragLeave={() => { if (dragOverTaskId === task.id) { setDragOverTaskId(null); setDragPosition(null); } }}
@@ -876,7 +867,7 @@ export const TaskRow: React.FC<TaskRowProps> = React.memo(({
       {visibleCols.map((col) => {
         switch (col.id) {
           case 'name':
-            return <NameCell key={col.id} task={task} accountability={accountability} width={col.width} isEditing={editingField === 'name'} onStartEdit={() => setEditingField('name')} onSave={(v) => handleUpdate('name', v)} onCancel={() => setEditingField(null)} />;
+            return <NameCell key={col.id} task={task} accountability={accountability} width={col.width} isEditing={editingField === 'name'} onStartEdit={() => setEditingField('name')} onSave={(v) => handleUpdate('name', v)} onCancel={() => setEditingField(null)} subtaskCount={subtaskCount} />;
           case 'status':
             return <StatusCell key={col.id} status={task.status} availableStatuses={availableStatuses} width={col.width} isEditing={editingField === 'status'} onStartEdit={() => setEditingField('status')} onSelect={(s) => handleUpdate('status', s.status)} onCancel={() => setEditingField(null)} />;
           case 'assignee':
