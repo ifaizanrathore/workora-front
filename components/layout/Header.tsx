@@ -3,11 +3,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, HelpCircle, ChevronDown, Settings, LogOut, User, Sun, Moon, Keyboard, Flag, X } from 'lucide-react';
+import { Search, HelpCircle, ChevronDown, Settings, LogOut, User, Sun, Moon, Keyboard, Flag, X, Menu } from 'lucide-react';
 import { cn, getUserInitials, getAvatarColor } from '@/lib/utils';
-import { useAuthStore, useWorkspaceStore, useTaskStore } from '@/stores';
+import { useAuthStore, useWorkspaceStore, useTaskStore, useUIStore } from '@/stores';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Task } from '@/types';
+import { NotificationCenter } from '@/components/ui/NotificationCenter';
 
 // Priority colors for search results
 const PRIORITY_COLORS: Record<string, string> = {
@@ -143,8 +144,16 @@ export const Header: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between h-[56px] sm:h-[60px] px-3 sm:px-6 bg-white dark:bg-gray-900 border-b border-[#ECEDF0] dark:border-gray-800 transition-colors">
-      {/* Left Spacer - Hidden on mobile */}
-      <div className="hidden md:block w-[100px]" />
+      {/* Left: Hamburger on mobile, spacer on desktop */}
+      <div className="w-[40px] md:w-[100px] flex items-center">
+        <button
+          onClick={() => useUIStore.getState().toggleSidebar()}
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-full text-[#9CA3AF] hover:bg-[#F5F7FA] dark:hover:bg-gray-800 hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors"
+          aria-label="Toggle sidebar"
+        >
+          <Menu className="h-5 w-5" strokeWidth={1.5} />
+        </button>
+      </div>
 
       {/* Center - Search Bar */}
       <div className="flex-1 flex justify-center mx-2 sm:mx-4 max-w-xl" ref={searchContainerRef}>
@@ -291,7 +300,10 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-1 sm:gap-2 w-auto sm:w-[180px] justify-end">
+      <div className="flex items-center gap-1 sm:gap-2 w-auto sm:w-[220px] justify-end">
+        {/* Notification Center */}
+        <NotificationCenter />
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}

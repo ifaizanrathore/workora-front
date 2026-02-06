@@ -1407,15 +1407,6 @@ export const TaskList: React.FC<TaskListProps> = ({
         </div>
       )}
 
-      <TopToolbar
-        listName={listName}
-        onAddTask={onAddTask}
-        showHidePanel={showHidePanel}
-        onHideToggle={() => setShowHidePanel(!showHidePanel)}
-        currentView={currentView}
-        onViewChange={setCurrentView}
-      />
-
       <FilterRow
         groupBy={internalGroupBy}
         onGroupByChange={handleGroupByChange}

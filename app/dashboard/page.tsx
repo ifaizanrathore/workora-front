@@ -2,10 +2,17 @@
 
 import React, { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { TaskList } from '@/components/tasks/TaskList';
-import { useTaskStore, useWorkspaceStore } from '@/stores';
+import { BoardView } from '@/components/tasks/BoardView';
+import { CalendarView } from '@/components/tasks/CalendarView';
+import { DashboardAnalytics } from '@/components/tasks/DashboardAnalytics';
+import { BulkActions } from '@/components/tasks/BulkActions';
+import { useTaskStore, useWorkspaceStore, useUIStore } from '@/stores';
 import { api } from '@/lib/api';
-import { ListTree } from 'lucide-react';
+import { ListTree, LayoutList, LayoutGrid, Calendar, BarChart3, Download } from 'lucide-react';
 import { SkeletonTaskList } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+import { exportTasksToCSV } from '@/lib/exportTasks';
+import toast from 'react-hot-toast';
 
 // Lazy load heavy modal components for better performance
 const CreateTaskModal = lazy(() => import('@/components/tasks/CreateTaskModal').then(m => ({ default: m.CreateTaskModal })));
@@ -23,29 +30,32 @@ const ModalLoadingFallback = () => (
   </div>
 );
 
+type ViewMode = 'list' | 'board' | 'calendar' | 'analytics';
+
 export default function DashboardPage() {
   const { tasks, setTasks, isModalOpen, isCreateModalOpen, openCreateModal } = useTaskStore();
-  const { 
-    currentList, 
-    currentWorkspace, 
-    currentSpace, 
+  const {
+    currentList,
+    currentWorkspace,
     setCurrentWorkspace,
-    setCurrentSpace, 
-    setCurrentList, 
-    setLists, 
-    setSpaces 
+    setCurrentSpace,
+    setCurrentList,
+    setLists,
+    setSpaces
   } = useWorkspaceStore();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
 
   const fetchTasks = useCallback(async () => {
     if (!currentList?.id) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const fetchedTasks = await api.getTasks(currentList.id);
       setTasks(fetchedTasks);
@@ -64,7 +74,7 @@ export default function DashboardPage() {
 
       try {
         const workspaces = await api.getWorkspaces();
-        
+
         if (workspaces && workspaces.length > 0) {
           setCurrentWorkspace(workspaces[0] as any);
         }
@@ -79,27 +89,27 @@ export default function DashboardPage() {
   // Initialize workspace data (spaces, lists) when workspace is set
   useEffect(() => {
     let isCancelled = false;
-    
+
     const initializeWorkspace = async () => {
       if (!currentWorkspace?.id) return;
-      
+
       setIsInitializing(true);
-      
+
       try {
         const spaces = await api.getSpaces(currentWorkspace.id);
         if (isCancelled) return;
-        
+
         setSpaces(spaces);
-        
+
         if (spaces && spaces.length > 0) {
           const spaceToUse = spaces[0];
           setCurrentSpace(spaceToUse);
-          
+
           const lists = await api.getFolderlessLists(spaceToUse.id);
           if (isCancelled) return;
-          
+
           setLists(lists);
-          
+
           if (lists && lists.length > 0) {
             setCurrentList(lists[0]);
           }
@@ -114,7 +124,7 @@ export default function DashboardPage() {
     };
 
     initializeWorkspace();
-    
+
     return () => {
       isCancelled = true;
     };
@@ -127,18 +137,36 @@ export default function DashboardPage() {
     }
   }, [currentList?.id, fetchTasks]);
 
+  // Handle bulk task selection
+  const handleTaskSelect = useCallback((taskId: string, selected: boolean) => {
+    setSelectedTaskIds((prev) =>
+      selected ? [...prev, taskId] : prev.filter((id) => id !== taskId)
+    );
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedTaskIds([]);
+  }, []);
+
+  const handleExport = useCallback(() => {
+    if (tasks.length === 0) {
+      toast.error('No tasks to export');
+      return;
+    }
+    exportTasksToCSV(tasks, `${currentList?.name || 'tasks'}.csv`);
+    toast.success(`Exported ${tasks.length} tasks`);
+  }, [tasks, currentList?.name]);
+
   // Show loading while initializing
   if (isInitializing && !currentList) {
     return (
       <div className="h-full flex flex-col bg-[#F8F9FB] dark:bg-gray-900">
-        {/* Skeleton Header */}
         <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-[#ECEDF0] dark:border-gray-800">
           <div className="flex items-center gap-3">
             <div className="h-7 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
             <div className="h-6 w-16 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
           </div>
         </div>
-        {/* Skeleton Task List */}
         <div className="flex-1 overflow-hidden">
           <SkeletonTaskList rows={8} />
         </div>
@@ -167,18 +195,58 @@ export default function DashboardPage() {
     );
   }
 
+  const viewButtons: { id: ViewMode; icon: React.ElementType; label: string }[] = [
+    { id: 'list', icon: LayoutList, label: 'List' },
+    { id: 'board', icon: LayoutGrid, label: 'Board' },
+    { id: 'calendar', icon: Calendar, label: 'Calendar' },
+    { id: 'analytics', icon: BarChart3, label: 'Analytics' },
+  ];
+
   return (
     <div className="h-full flex flex-col bg-[#F8F9FB] dark:bg-gray-900">
       {/* List Header */}
-      <div className="px-6 py-4 bg-white dark:bg-gray-900 border-b border-[#ECEDF0] dark:border-gray-800">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 bg-white dark:bg-gray-900 border-b border-[#ECEDF0] dark:border-gray-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-[#1A1A2E] dark:text-white">
+            <h1 className="text-lg sm:text-xl font-semibold text-[#1A1A2E] dark:text-white">
               {currentList?.name || 'Tasks'}
             </h1>
-            <span className="px-2.5 py-1 bg-[#F3F4F6] dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 text-sm font-medium rounded-md">
+            <span className="hidden sm:inline-block px-2.5 py-1 bg-[#F3F4F6] dark:bg-gray-800 text-[#6B7280] dark:text-gray-400 text-sm font-medium rounded-md">
               {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
             </span>
+          </div>
+
+          {/* View Switcher + Export */}
+          <div className="flex items-center gap-2">
+            {/* View Mode Buttons */}
+            <div className="flex items-center bg-[#F5F7FA] dark:bg-gray-800 rounded-lg p-0.5">
+              {viewButtons.map(({ id, icon: Icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setViewMode(id)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all',
+                    viewMode === id
+                      ? 'bg-white dark:bg-gray-700 text-[#6E62E5] shadow-sm'
+                      : 'text-[#9CA3AF] dark:text-gray-500 hover:text-[#5C5C6D] dark:hover:text-gray-300'
+                  )}
+                  title={label}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Export Button */}
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[#9CA3AF] dark:text-gray-500 hover:text-[#5C5C6D] dark:hover:text-gray-300 hover:bg-[#F5F7FA] dark:hover:bg-gray-800 rounded-lg transition-colors"
+              title="Export tasks to CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
           </div>
         </div>
       </div>
@@ -195,18 +263,35 @@ export default function DashboardPage() {
               Retry
             </button>
           </div>
+        ) : viewMode === 'board' ? (
+          <BoardView tasks={tasks} onAddTask={openCreateModal} />
+        ) : viewMode === 'calendar' ? (
+          <CalendarView tasks={tasks} />
+        ) : viewMode === 'analytics' ? (
+          <div className="p-4 sm:p-6 overflow-y-auto h-full">
+            <DashboardAnalytics tasks={tasks} />
+          </div>
         ) : (
-          <TaskList 
-            tasks={tasks} 
+          <TaskList
+            tasks={tasks}
             isLoading={isLoading}
             listId={currentList?.id}
             workspaceId={currentWorkspace?.id}
             listName={currentList?.name}
             onTaskUpdate={fetchTasks}
             onAddTask={openCreateModal}
+            selectedTasks={selectedTaskIds}
+            onTaskSelect={handleTaskSelect}
           />
         )}
       </div>
+
+      {/* Bulk Actions Bar */}
+      <BulkActions
+        selectedIds={selectedTaskIds}
+        onClearSelection={handleClearSelection}
+        onTaskUpdate={fetchTasks}
+      />
 
       {/* Modals - Lazy loaded with Suspense */}
       <Suspense fallback={<ModalLoadingFallback />}>

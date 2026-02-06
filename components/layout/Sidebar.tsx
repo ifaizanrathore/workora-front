@@ -102,10 +102,18 @@ export const Sidebar: React.FC = () => {
     setCurrentList(list);
   };
 
+  const { setSidebarOpen } = useUIStore();
+
   if (!sidebarOpen) return null;
 
   return (
-    <aside className="flex flex-col h-screen w-[240px] bg-white dark:bg-gray-900 border-r border-[#ECEDF0] dark:border-gray-800 flex-shrink-0 transition-colors">
+    <>
+      {/* Mobile overlay */}
+      <div
+        className="fixed inset-0 bg-black/40 z-40 md:hidden"
+        onClick={() => setSidebarOpen(false)}
+      />
+      <aside className="flex flex-col h-screen w-[240px] bg-white dark:bg-gray-900 border-r border-[#ECEDF0] dark:border-gray-800 flex-shrink-0 transition-colors fixed md:relative z-50 md:z-auto">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-[60px] border-b border-[#ECEDF0] dark:border-gray-800">
         <svg className="w-8 h-8" viewBox="0 0 27 29" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -272,6 +280,7 @@ export const Sidebar: React.FC = () => {
         </Link>
       </div>
     </aside>
+    </>
   );
 };
 

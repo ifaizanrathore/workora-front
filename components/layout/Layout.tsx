@@ -5,6 +5,8 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useUIStore } from '@/stores';
 import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { TimeTracker } from '@/components/ui/TimeTracker';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,9 +27,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto bg-[#F8F9FB] dark:bg-gray-950 transition-colors">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
+
+      {/* Global Time Tracker Widget */}
+      <TimeTracker />
     </div>
   );
 };
