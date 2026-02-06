@@ -108,13 +108,11 @@ export const Sidebar: React.FC = () => {
     <aside className="flex flex-col h-screen w-[240px] bg-white dark:bg-gray-900 border-r border-[#ECEDF0] dark:border-gray-800 flex-shrink-0 transition-colors">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 h-[60px] border-b border-[#ECEDF0] dark:border-gray-800">
-        <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-[#6E62E5] to-[#8B7CF7] rounded-lg">
-          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
-        </div>
+        <svg className="w-8 h-8" viewBox="0 0 27 29" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.9909 10.4419C23.4776 10.4419 23.876 10.0466 23.835 9.56162C23.6281 7.11472 22.5635 4.80805 20.8138 3.05837C18.8555 1.10013 16.1996 2.09082e-07 13.4302 0C10.6608 -2.09082e-07 8.0049 1.10013 6.04666 3.05837C4.29698 4.80805 3.23236 7.11472 3.02543 9.56162C2.98441 10.0466 3.38284 10.4419 3.86956 10.4419H8.2535C8.74022 10.4419 9.12569 10.0433 9.22486 9.56679C9.39406 8.75384 9.79684 8.00066 10.3929 7.40461C11.1984 6.59906 12.291 6.1465 13.4302 6.1465C14.5694 6.1465 15.662 6.59906 16.4676 7.40461C17.0636 8.00066 17.4664 8.75384 17.6356 9.56679C17.7348 10.0433 18.1202 10.4419 18.6069 10.4419H22.9909Z" fill="#6E62E5"/>
+          <path d="M25.1045 12.5957C25.8623 12.1053 26.862 12.6492 26.8623 13.5518V18.6748C26.8623 19.0583 26.6691 19.4163 26.3486 19.627L13.6182 27.9941L13.4326 28.1182L13.4307 28.1172V28.1182L13.2451 27.9951L0.513672 19.627C0.193182 19.4163 0 19.0583 0 18.6748L0 13.5518C0.000305045 12.6493 1.00004 12.1056 1.75781 12.5957L13.4307 20.1504L25.1045 12.5957Z" fill="#6E62E5"/>
+          <path d="M19.5078 24.0898L13.4316 28.123L13.2402 27.998L7.35547 24.0898L13.4316 20.1572L19.5078 24.0898Z" fill="#6E62E5"/>
+        </svg>
         <div className="flex items-baseline gap-1">
           <span className="font-semibold text-[15px] text-[#1A1A2E] dark:text-white">Workora</span>
           <span className="text-[10px] text-[#8C8C9A] dark:text-gray-500 font-medium">1.0V</span>
