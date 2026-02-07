@@ -29,6 +29,8 @@ import {
   FileText,
   Loader2,
   MoreHorizontal,
+  Link2,
+  Repeat,
 } from 'lucide-react';
 import { cn, type CountdownTime } from '@/lib/utils';
 import { useTaskStore, useWorkspaceStore } from '@/stores';
@@ -36,7 +38,8 @@ import { api } from '@/lib/api';
 import { useCreateComment, useCountdown, useTaskAccountability } from '@/hooks';
 import { Avatar } from '@/components/ui/avatar';
 import toast from 'react-hot-toast';
-import type { User, Status, Tag, TaskAccountability, TimeEntry, Priority } from '@/types';
+import type { User, Status, Tag, TaskAccountability, TimeEntry, Priority, RecurrenceConfig } from '@/types';
+import { getRecurrenceLabel } from '@/hooks/useRecurrence';
 
 // Priority type from PriorityPopover (uses 'label' instead of 'priority')
 interface PopoverPriority {
@@ -47,7 +50,7 @@ interface PopoverPriority {
 }
 
 // Panels — self-contained, just need taskId
-import { ActivityPanel, CommentsPanel, HashtagsPanel, LinksPanel } from '@/components/panels';
+import { ActivityPanel, CommentsPanel, HashtagsPanel, LinksPanel, DependenciesPanel } from '@/components/panels';
 
 // Popovers — render-prop pattern (children = trigger)
 import {
@@ -56,6 +59,7 @@ import {
   AssigneePopover,
   DueDatePopover,
   TagsPopover,
+  RecurrencePopover,
 } from '@/components/tasks/popovers';
 
 // Extracted components
@@ -69,7 +73,7 @@ import { AIPanel } from '@/components/panels/AIPanel';
 // Small Inline Helpers
 // ============================================================
 
-type RightPanelTab = 'activity' | 'hashtags' | 'documents' | 'comments' | 'ai';
+type RightPanelTab = 'activity' | 'hashtags' | 'documents' | 'comments' | 'ai' | 'dependencies';
 
 const TimeBox: React.FC<{ value: number; label: string; isOverdue?: boolean }> = ({ value, label, isOverdue }) => (
   <div className="text-center">
@@ -689,6 +693,26 @@ export const TaskDetailModal: React.FC = () => {
     [taskId, tags, updateTask]
   );
 
+  const handleRecurrenceChange = useCallback(
+    async (config: RecurrenceConfig | null) => {
+      if (!taskId) return;
+      try {
+        await api.setTaskRecurrence(taskId, config ? {
+          frequency: config.frequency,
+          interval: config.interval,
+          ...(config.daysOfWeek && { day_of_week: config.daysOfWeek }),
+          ...(config.dayOfMonth && { day_of_month: [config.dayOfMonth] }),
+          ...(config.endType === 'after' && config.endCount && { end_type: 'after', end_count: config.endCount }),
+          ...(config.endType === 'on_date' && config.endDate && { end_type: 'on_date', end_date: new Date(config.endDate).getTime() }),
+        } : null);
+        toast.success(config ? 'Recurrence set' : 'Recurrence removed');
+      } catch {
+        toast.error('Failed to update recurrence');
+      }
+    },
+    [taskId]
+  );
+
   const handleStartTimer = useCallback(async () => {
     if (!taskId || !teamId) return;
     try {
@@ -1043,6 +1067,31 @@ export const TaskDetailModal: React.FC = () => {
                     </button>
                   </TagsPopover>
                 </FieldRow>
+
+                <FieldRow icon={<Repeat className="h-4 w-4" />} label="Recurring">
+                  <RecurrencePopover
+                    value={task?.recurrence ? {
+                      frequency: task.recurrence.frequency || 'weekly',
+                      interval: task.recurrence.interval || 1,
+                      daysOfWeek: task.recurrence.day_of_week,
+                      dayOfMonth: task.recurrence.day_of_month?.[0],
+                      endType: task.recurrence.end_type || 'never',
+                      endCount: task.recurrence.end_count,
+                      endDate: task.recurrence.end_date,
+                    } : null}
+                    onChange={handleRecurrenceChange}
+                  >
+                    <button className="flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] text-[#8C8C9A] dark:text-gray-400 hover:bg-[#F5F5F7] dark:hover:bg-gray-700 hover:text-[#7C3AED] dark:hover:text-purple-400 transition-colors">
+                      {task?.recurrence?.enabled ? (
+                        <span className="text-[#7C3AED] dark:text-purple-400">
+                          {getRecurrenceLabel(task.recurrence) || 'Recurring'}
+                        </span>
+                      ) : (
+                        <span>Set recurring</span>
+                      )}
+                    </button>
+                  </RecurrencePopover>
+                </FieldRow>
               </div>
             </div>
 
@@ -1072,7 +1121,7 @@ export const TaskDetailModal: React.FC = () => {
             </div>
 
             {/* Subtasks / Checklist / Actions */}
-            <TaskItemsTabs taskId={taskId} listId={listId} />
+            <TaskItemsTabs taskId={taskId} listId={listId} taskDescription={task?.description} taskName={task?.name} />
           </div>
         </div>
 
@@ -1145,6 +1194,7 @@ export const TaskDetailModal: React.FC = () => {
               {activeRightTab === 'documents' && <LinksPanel taskId={taskId} />}
               {activeRightTab === 'comments' && <CommentsPanel taskId={taskId} />}
               {activeRightTab === 'ai' && <AIPanel taskId={taskId} listId={listId} task={task} />}
+              {activeRightTab === 'dependencies' && <DependenciesPanel taskId={taskId} />}
 
             </div>
 
@@ -1168,6 +1218,12 @@ export const TaskDetailModal: React.FC = () => {
                 active={activeRightTab === 'documents'}
                 onClick={() => setActiveRightTab('documents')}
                 label="Docs"
+              />
+              <SidebarIcon
+                icon={<Link2 className="h-4 w-4" />}
+                active={activeRightTab === 'dependencies'}
+                onClick={() => setActiveRightTab('dependencies')}
+                label="Deps"
               />
               <SidebarIcon
                 icon={<Sparkles className="h-4 w-4" />}

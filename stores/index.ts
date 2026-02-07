@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Workspace, Space, Folder, List, Task, PanelType } from '@/types';
+import { User, Workspace, Space, Folder, List, Task, PanelType, Goal } from '@/types';
 
 // Auth Store - no persist to avoid hydration loops
 interface AuthState { 
@@ -260,4 +260,48 @@ export const useTimerStore = create<TimerState>()((set, get) => ({
       set({ elapsedTime: Date.now() - startTime });
     }
   },
+}));
+
+// Goal Store
+interface GoalState {
+  goals: Goal[];
+  selectedGoal: Goal | null;
+  isGoalModalOpen: boolean;
+  isCreateGoalOpen: boolean;
+
+  setGoals: (goals: Goal[]) => void;
+  setSelectedGoal: (goal: Goal | null) => void;
+  openGoalModal: (goal: Goal) => void;
+  closeGoalModal: () => void;
+  openCreateGoal: () => void;
+  closeCreateGoal: () => void;
+  updateGoal: (goalId: string, updates: Partial<Goal>) => void;
+  removeGoal: (goalId: string) => void;
+}
+
+export const useGoalStore = create<GoalState>()((set) => ({
+  goals: [],
+  selectedGoal: null,
+  isGoalModalOpen: false,
+  isCreateGoalOpen: false,
+
+  setGoals: (goals) => set({ goals }),
+  setSelectedGoal: (selectedGoal) => set({ selectedGoal }),
+  openGoalModal: (goal) => set({ selectedGoal: goal, isGoalModalOpen: true }),
+  closeGoalModal: () => set({ isGoalModalOpen: false }),
+  openCreateGoal: () => set({ isCreateGoalOpen: true }),
+  closeCreateGoal: () => set({ isCreateGoalOpen: false }),
+  updateGoal: (goalId, updates) =>
+    set((state) => ({
+      goals: state.goals.map((g) => (g.id === goalId ? { ...g, ...updates } : g)),
+      selectedGoal:
+        state.selectedGoal?.id === goalId
+          ? { ...state.selectedGoal, ...updates }
+          : state.selectedGoal,
+    })),
+  removeGoal: (goalId) =>
+    set((state) => ({
+      goals: state.goals.filter((g) => g.id !== goalId),
+      selectedGoal: state.selectedGoal?.id === goalId ? null : state.selectedGoal,
+    })),
 }));

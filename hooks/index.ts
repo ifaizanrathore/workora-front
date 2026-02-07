@@ -10,5 +10,8 @@ export * from './useCreateTaskForm';
 export * from './useTaskFormData';
 export * from './useKeyboardShortcuts';
 export * from './useVirtualList';
+export * from './useDependencies';
+export * from './useGoals';
+export * from './useRecurrence';
 export { useSocket, useTaskSocket } from './useSocket';
 export type { SocketState } from './useSocket';

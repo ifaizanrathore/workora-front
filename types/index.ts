@@ -112,9 +112,11 @@ export interface Task {
   space?: { id: string; name: string };
   url?: string;
   linked_tasks?: LinkedTask[];
+  dependencies?: Dependency[];
   parent?: string;
   subtasks?: Task[];
   attachments?: Attachment[];
+  recurrence?: TaskRecurrence;
 }
 
 export interface LinkedTask {
@@ -122,6 +124,42 @@ export interface LinkedTask {
   link_id: string;
   date_created: string;
   task?: Task;
+}
+
+export type DependencyType = 'waiting_on' | 'blocking';
+
+export interface Dependency {
+  task_id: string;
+  depends_on: string;
+  type: number; // 0 = waiting_on, 1 = blocking
+  date_created: string;
+  userid: string;
+  task?: Task;
+}
+
+// Recurrence types
+export interface TaskRecurrence {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  day_of_week?: number[];
+  day_of_month?: number[];
+  month_of_year?: number[];
+  end_type: 'never' | 'after' | 'on_date';
+  end_count?: number;
+  end_date?: string;
+  create_new?: boolean;
+  status?: string;
+}
+
+export interface RecurrenceConfig {
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  daysOfWeek?: number[];
+  dayOfMonth?: number;
+  endType: 'never' | 'after' | 'on_date';
+  endCount?: number;
+  endDate?: string;
 }
 
 // Checklist types
@@ -289,6 +327,66 @@ export interface ETAExtension {
 
 export type AccountabilityStatus = 'GREEN' | 'ORANGE' | 'RED';
 
+// Goal types
+export interface Goal {
+  id: string;
+  name: string;
+  team_id: string;
+  date_created: string;
+  start_date: string | null;
+  due_date: string;
+  description: string;
+  private: boolean;
+  archived: boolean;
+  creator: number;
+  color: string;
+  pretty_id: string;
+  multiple_owners: boolean;
+  folder_id: string | null;
+  members: User[];
+  owners: User[];
+  key_results: KeyResult[];
+  percent_completed: number;
+  pretty_url: string;
+}
+
+export interface KeyResult {
+  id: string;
+  goal_id: string;
+  name: string;
+  creator: number;
+  type: 'number' | 'currency' | 'boolean' | 'percentage' | 'automatic';
+  date_created: string;
+  percent_completed: number;
+  completed: boolean;
+  task_ids: string[];
+  owners: User[];
+  steps_start: number;
+  steps_end: number;
+  steps_current: number;
+  unit: string;
+}
+
+export interface CreateGoalInput {
+  name: string;
+  due_date: number;
+  description?: string;
+  multiple_owners?: boolean;
+  owners?: number[];
+  color?: string;
+}
+
+export interface CreateKeyResultInput {
+  name: string;
+  owners: number[];
+  type: 'number' | 'currency' | 'boolean' | 'percentage' | 'automatic';
+  steps_start: number;
+  steps_end: number;
+  unit: string;
+  task_ids?: string[];
+  list_ids?: string[];
+}
+
 // Panel types
 export type PanelType =
   | 'activity'
@@ -296,7 +394,9 @@ export type PanelType =
   | 'comments'
   | 'eta'
   | 'tags'
-  | 'links';
+  | 'links'
+  | 'dependencies'
+  | 'goals';
 
 export interface ActivityEntry {
   id: string;

@@ -477,6 +477,128 @@ class ApiClient {
   }
 
   // ============================================================
+  // DEPENDENCIES & LINKED TASKS
+  // ============================================================
+
+  async addDependency(taskId: string, data: {
+    depends_on?: string;
+    dependency_of?: string;
+    type?: number;
+  }) {
+    await this.guardTaskNotCompleted(taskId, 'add dependency');
+    return this.request<any>(`/clickup/tasks/${taskId}/dependencies`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDependency(taskId: string, query: {
+    depends_on?: string;
+    dependency_of?: string;
+  }) {
+    const params = new URLSearchParams();
+    if (query.depends_on) params.append('depends_on', query.depends_on);
+    if (query.dependency_of) params.append('dependency_of', query.dependency_of);
+    return this.request<void>(`/clickup/tasks/${taskId}/dependencies?${params.toString()}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async addTaskLink(taskId: string, linksTo: string) {
+    await this.guardTaskNotCompleted(taskId, 'add task link');
+    return this.request<any>(`/clickup/tasks/${taskId}/links/${linksTo}`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteTaskLink(taskId: string, linksTo: string) {
+    return this.request<void>(`/clickup/tasks/${taskId}/links/${linksTo}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============================================================
+  // GOALS
+  // ============================================================
+
+  async getGoals(teamId: string) {
+    const response = await this.request<any>(`/clickup/goals?teamId=${teamId}`);
+    return response?.goals || response || [];
+  }
+
+  async createGoal(teamId: string, data: {
+    name: string;
+    due_date: number;
+    description?: string;
+    multiple_owners?: boolean;
+    owners?: number[];
+    color?: string;
+  }) {
+    return this.request<any>(`/clickup/goals?teamId=${teamId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getGoal(goalId: string) {
+    return this.request<any>(`/clickup/goals/${goalId}`);
+  }
+
+  async updateGoal(goalId: string, data: any) {
+    return this.request<any>(`/clickup/goals/${goalId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGoal(goalId: string) {
+    return this.request<void>(`/clickup/goals/${goalId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createKeyResult(goalId: string, data: {
+    name: string;
+    owners: number[];
+    type: string;
+    steps_start: number;
+    steps_end: number;
+    unit: string;
+    task_ids?: string[];
+    list_ids?: string[];
+  }) {
+    return this.request<any>(`/clickup/goals/${goalId}/key-results`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateKeyResult(keyResultId: string, data: { steps_current?: number; note?: string }) {
+    return this.request<any>(`/clickup/key-results/${keyResultId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteKeyResult(keyResultId: string) {
+    return this.request<void>(`/clickup/key-results/${keyResultId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ============================================================
+  // RECURRING TASKS
+  // ============================================================
+
+  async setTaskRecurrence(taskId: string, recurrence: any | null) {
+    await this.guardTaskNotCompleted(taskId, 'set recurrence');
+    return this.request<any>(`/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ recurrence }),
+    });
+  }
+
+  // ============================================================
   // COMMENTS
   // ============================================================
 

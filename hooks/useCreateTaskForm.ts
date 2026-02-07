@@ -1,6 +1,7 @@
 'use client';
 
 import { useReducer, useCallback } from 'react';
+import type { RecurrenceConfig } from '@/types';
 
 export interface Assignee {
   id: number;
@@ -59,6 +60,9 @@ export interface CreateTaskFormState {
   startDate: string;
   timeEstimate: string;
   
+  // Recurrence
+  recurrence: RecurrenceConfig | null;
+
   // Checklists
   checklists: Checklist[];
   newChecklistItem: Record<string, string>;
@@ -89,6 +93,7 @@ type CreateTaskFormAction =
   | { type: 'ADD_CHECKLIST_ITEM'; payload: { checklistId: string; item: ChecklistItem } }
   | { type: 'REMOVE_CHECKLIST_ITEM'; payload: { checklistId: string; itemId: string } }
   | { type: 'SET_NEW_CHECKLIST_ITEM'; payload: { checklistId: string; value: string } }
+  | { type: 'SET_RECURRENCE'; payload: RecurrenceConfig | null }
   | { type: 'TOGGLE_TIME_ESTIMATE_INPUT' }
   | { type: 'TOGGLE_FIELD_VISIBILITY'; payload: string }
   | { type: 'SET_ERROR'; payload: string | null }
@@ -120,6 +125,7 @@ const initialState: CreateTaskFormState = {
   dueDate: '',
   startDate: '',
   timeEstimate: '',
+  recurrence: null,
   checklists: [],
   newChecklistItem: {},
   showTimeEstimateInput: false,
@@ -244,6 +250,13 @@ function formReducer(
         },
       };
     
+    case 'SET_RECURRENCE':
+      return {
+        ...state,
+        recurrence: action.payload,
+        visibleFields: { ...state.visibleFields, recurring: true },
+      };
+
     case 'TOGGLE_TIME_ESTIMATE_INPUT':
       return { ...state, showTimeEstimateInput: !state.showTimeEstimateInput };
     
@@ -353,6 +366,11 @@ export function useCreateTaskForm() {
     dispatch({ type: 'SET_NEW_CHECKLIST_ITEM', payload: { checklistId, value } });
   }, []);
 
+  // Recurrence
+  const setRecurrence = useCallback((config: RecurrenceConfig | null) => {
+    dispatch({ type: 'SET_RECURRENCE', payload: config });
+  }, []);
+
   // UI
   const toggleTimeEstimateInput = useCallback(() => {
     dispatch({ type: 'TOGGLE_TIME_ESTIMATE_INPUT' });
@@ -391,6 +409,7 @@ export function useCreateTaskForm() {
     addChecklistItem,
     removeChecklistItem,
     setNewChecklistItem,
+    setRecurrence,
     toggleTimeEstimateInput,
     toggleFieldVisibility,
     setError,

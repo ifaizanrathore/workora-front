@@ -4,3 +4,4 @@ export { AssigneePopover } from './AssigneePopover';
 export { TagsPopover } from './TagsPopover';
 export { DueDatePopover } from './DueDatePopover';
 export { ChecklistPopover } from './ChecklistPopover';
+export { RecurrencePopover } from './RecurrencePopover';

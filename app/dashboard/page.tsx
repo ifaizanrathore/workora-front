@@ -5,8 +5,7 @@ import { TaskList } from '@/components/tasks/TaskList';
 import { BoardView } from '@/components/tasks/BoardView';
 import { CalendarView } from '@/components/tasks/CalendarView';
 import { DashboardAnalytics } from '@/components/tasks/DashboardAnalytics';
-import { BulkActions } from '@/components/tasks/BulkActions';
-import { useTaskStore, useWorkspaceStore, useUIStore } from '@/stores';
+import { useTaskStore, useWorkspaceStore } from '@/stores';
 import { api } from '@/lib/api';
 import { ListTree, LayoutList, LayoutGrid, Calendar, BarChart3, Download } from 'lucide-react';
 import { SkeletonTaskList } from '@/components/ui/skeleton';
@@ -142,10 +141,6 @@ export default function DashboardPage() {
     setSelectedTaskIds((prev) =>
       selected ? [...prev, taskId] : prev.filter((id) => id !== taskId)
     );
-  }, []);
-
-  const handleClearSelection = useCallback(() => {
-    setSelectedTaskIds([]);
   }, []);
 
   const handleExport = useCallback(() => {
@@ -285,13 +280,6 @@ export default function DashboardPage() {
           />
         )}
       </div>
-
-      {/* Bulk Actions Bar */}
-      <BulkActions
-        selectedIds={selectedTaskIds}
-        onClearSelection={handleClearSelection}
-        onTaskUpdate={fetchTasks}
-      />
 
       {/* Modals - Lazy loaded with Suspense */}
       <Suspense fallback={<ModalLoadingFallback />}>

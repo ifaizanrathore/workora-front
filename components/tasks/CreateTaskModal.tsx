@@ -77,6 +77,7 @@ export const CreateTaskModal: React.FC = () => {
     addChecklistItem,
     removeChecklistItem,
     setNewChecklistItem,
+    setRecurrence,
     toggleFieldVisibility,
     setError,
     resetForm,
@@ -256,23 +257,23 @@ export const CreateTaskModal: React.FC = () => {
       >
         {/* Modal */}
         <div
-          className="bg-white w-full max-w-xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+          className="bg-white dark:bg-gray-900 w-full max-w-xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Plus className="h-4 w-4 text-purple-600" />
+              <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                <Plus className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Create Task</h2>
-                <p className="text-xs text-gray-500">Add a new task to your list</p>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Create Task</h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Add a new task to your list</p>
               </div>
             </div>
             <button
               onClick={closeCreateModal}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -286,8 +287,8 @@ export const CreateTaskModal: React.FC = () => {
               <div className="space-y-5">
                 {/* List Selector */}
                 <div className="flex items-center gap-2">
-                  <List className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-500">List:</span>
+                  <List className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">List:</span>
                   {(formData.lists.length > 0) ? (
                     <div className="relative">
                       <select
@@ -303,8 +304,8 @@ export const CreateTaskModal: React.FC = () => {
                           "appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm font-medium border cursor-pointer",
                           "focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500",
                           currentList
-                            ? "bg-purple-50 border-purple-200 text-purple-700"
-                            : "bg-red-50 border-red-200 text-red-600"
+                            ? "bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300"
+                            : "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-600 dark:text-red-400"
                         )}
                         aria-label="Select a task list"
                       >
@@ -324,7 +325,7 @@ export const CreateTaskModal: React.FC = () => {
 
                 {/* Task Name Input */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="task-name">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="task-name">
                     Task Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -341,10 +342,10 @@ export const CreateTaskModal: React.FC = () => {
                       onPaste={handlePaste}
                       placeholder="What needs to be done?"
                       className={cn(
-                        "w-full px-4 py-3 rounded-xl text-gray-900 placeholder-gray-400",
+                        "w-full px-4 py-3 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500",
                         "border-2 transition-all",
                         "focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10",
-                        formState.error ? "border-red-300 bg-red-50" : "border-gray-200 bg-gray-50/50"
+                        formState.error ? "border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700" : "border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50"
                       )}
                       aria-invalid={!!formState.error}
                       aria-describedby={formState.error ? 'task-name-error' : undefined}
@@ -354,8 +355,8 @@ export const CreateTaskModal: React.FC = () => {
                       className={cn(
                         "absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all",
                         showAIPanel
-                          ? "bg-purple-100 text-purple-600"
-                          : "text-gray-400 hover:text-purple-600 hover:bg-purple-50"
+                          ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400"
+                          : "text-gray-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30"
                       )}
                       title="AI Assistant (press /)"
                       aria-label="Toggle AI assistant"
@@ -374,7 +375,7 @@ export const CreateTaskModal: React.FC = () => {
                 {!formState.showDescription ? (
                   <button
                     onClick={toggleShowDescription}
-                    className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                    className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                     aria-label="Add task description"
                   >
                     <FileText className="w-4 h-4" />
@@ -382,7 +383,7 @@ export const CreateTaskModal: React.FC = () => {
                   </button>
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="task-description">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" htmlFor="task-description">
                       Description
                     </label>
                     <textarea
@@ -390,7 +391,7 @@ export const CreateTaskModal: React.FC = () => {
                       value={formState.description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Add more details..."
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 resize-none h-24 bg-gray-50/50"
+                      className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 resize-none h-24 bg-gray-50/50 dark:bg-gray-800/50"
                       aria-label="Task description"
                     />
                   </div>
@@ -440,7 +441,7 @@ export const CreateTaskModal: React.FC = () => {
                         <button
                           key={assignee.id}
                           onClick={() => removeAssignee(assignee.id)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-full text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                           aria-label={`Remove assignee: ${assignee.username || assignee.email}`}
                         >
                           <div className="w-4 h-4 rounded-full bg-purple-500 flex items-center justify-center text-white text-[10px]">
@@ -480,6 +481,8 @@ export const CreateTaskModal: React.FC = () => {
                         items: [],
                       });
                     }}
+                    recurrence={formState.recurrence}
+                    onRecurrenceChange={setRecurrence}
                     onToggleFieldVisibility={toggleFieldVisibility}
                     onOpenChooseFieldModal={() => setShowChooseFieldModal(true)}
                   />
@@ -507,14 +510,14 @@ export const CreateTaskModal: React.FC = () => {
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
             <button
               onClick={() => setShowAskAIChat(!showAskAIChat)}
               className={cn(
                 "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                 showAskAIChat
-                  ? "bg-purple-100 text-purple-700"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300"
+                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
               )}
               aria-label="Ask AI for help"
             >
@@ -525,7 +528,7 @@ export const CreateTaskModal: React.FC = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={closeCreateModal}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 aria-label="Cancel task creation"
               >
                 Cancel

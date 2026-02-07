@@ -15,6 +15,8 @@ import {
   ChevronRight,
   List,
   MoreHorizontal,
+  Target,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWorkspaceStore, useUIStore } from '@/stores';
@@ -26,6 +28,8 @@ const navItems = [
   { icon: FileText, label: 'PaySlips', href: '/dashboard/payslips' },
   { icon: Building2, label: 'Resources', href: '/dashboard/resources' },
   { icon: Clock, label: 'Time Tracking', href: '/dashboard/time-tracking' },
+  { icon: Target, label: 'Goals', href: '/dashboard/goals' },
+  { icon: Sparkles, label: 'AI Standup', href: '/dashboard/standup' },
   { icon: MessageCircle, label: 'Manuals', href: '/dashboard/manuals' },
 ];
 

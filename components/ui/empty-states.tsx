@@ -16,6 +16,9 @@ import {
   Bell,
   Settings,
   Plus,
+  Target,
+  Repeat,
+  GitBranch,
 } from 'lucide-react';
 
 // ============================================================
@@ -271,6 +274,42 @@ export const EmptyDocuments: React.FC<PresetEmptyStateProps> = ({ onAction, clas
     title="No documents"
     description="Add documents to this task for reference"
     action={onAction ? { label: 'Add Document', onClick: onAction } : undefined}
+    className={className}
+    size={size}
+  />
+);
+
+// No Dependencies
+export const EmptyDependencies: React.FC<PresetEmptyStateProps> = ({ onAction, className, size }) => (
+  <EmptyState
+    icon={<GitBranch className="w-full h-full" />}
+    title="No dependencies"
+    description="Add dependencies to track task relationships"
+    action={onAction ? { label: 'Add Dependency', onClick: onAction } : undefined}
+    className={className}
+    size={size}
+  />
+);
+
+// No Goals
+export const EmptyGoals: React.FC<PresetEmptyStateProps> = ({ onAction, className, size }) => (
+  <EmptyState
+    icon={<Target className="w-full h-full" />}
+    title="No goals yet"
+    description="Create goals to track progress and align your team"
+    action={onAction ? { label: 'Create Goal', onClick: onAction } : undefined}
+    className={className}
+    size={size}
+  />
+);
+
+// No Recurrence
+export const EmptyRecurring: React.FC<PresetEmptyStateProps> = ({ onAction, className, size }) => (
+  <EmptyState
+    icon={<Repeat className="w-full h-full" />}
+    title="No recurrence set"
+    description="Set up a recurring schedule for this task"
+    action={onAction ? { label: 'Set Recurring', onClick: onAction } : undefined}
     className={className}
     size={size}
   />

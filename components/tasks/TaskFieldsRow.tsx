@@ -9,6 +9,7 @@ import {
   Flag,
   Tag,
   CheckSquare,
+  Repeat,
 } from 'lucide-react';
 import { cn, getPriorityColor } from '@/lib/utils';
 import type {
@@ -24,7 +25,10 @@ import { DueDatePopover } from './popovers/DueDatePopover';
 import { AssigneePopover } from './popovers/AssigneePopover';
 import { TagsPopover } from './popovers/TagsPopover';
 import { ChecklistPopover } from './popovers/ChecklistPopover';
+import { RecurrencePopover } from './popovers/RecurrencePopover';
 import { AddFieldsDropdown } from './AddFieldsDropdown';
+import type { RecurrenceConfig } from '@/types';
+import { getRecurrenceLabel } from '@/hooks/useRecurrence';
 
 interface TaskFieldsRowProps {
   status: TaskStatus | null;
@@ -46,6 +50,8 @@ interface TaskFieldsRowProps {
   onStartDateChange: (date: string) => void;
   onTimeEstimateChange: (estimate: string) => void;
   onAddChecklist: (name: string) => void;
+  recurrence: RecurrenceConfig | null;
+  onRecurrenceChange: (config: RecurrenceConfig | null) => void;
   onToggleFieldVisibility: (field: string) => void;
   onOpenChooseFieldModal: () => void;
 }
@@ -71,6 +77,8 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
   onStartDateChange,
   onTimeEstimateChange,
   onAddChecklist,
+  recurrence,
+  onRecurrenceChange,
   onToggleFieldVisibility,
   onOpenChooseFieldModal,
 }) => {
@@ -79,7 +87,7 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
         Task Details
       </label>
 
@@ -92,7 +100,7 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
           statuses={availableStatuses}
         >
           <button
-            className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
+            className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all"
             aria-label="Set task status"
           >
             <div
@@ -112,7 +120,7 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
                 'inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all',
                 priority
                   ? 'text-white'
-                  : 'border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                  : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
               )}
               style={priority ? { backgroundColor: getPriorityColor(priority.id) } : undefined}
               aria-label="Set task priority"
@@ -138,8 +146,8 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
               className={cn(
                 'inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all',
                 dueDate
-                  ? 'bg-purple-50 border border-purple-200 text-purple-700'
-                  : 'border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                  ? 'bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300'
+                  : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
               )}
               aria-label="Set due date"
             >
@@ -161,7 +169,7 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
             members={availableMembers}
           >
             <button
-              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
+              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all"
               aria-label="Add assignees"
             >
               <User className="h-3.5 w-3.5" />
@@ -182,7 +190,7 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
             tags={availableTags}
           >
             <button
-              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
+              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all"
               aria-label="Add tags"
             >
               <Tag className="h-3.5 w-3.5" />
@@ -199,8 +207,8 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
               className={cn(
                 'inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all',
                 timeEstimate
-                  ? 'bg-purple-50 border border-purple-200 text-purple-700'
-                  : 'border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                  ? 'bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300'
+                  : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
               )}
               aria-label="Set time estimate"
             >
@@ -209,8 +217,8 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
             </button>
 
             {showTimeEstimateInput && (
-              <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50 w-52">
-                <label className="text-sm font-medium text-gray-700 mb-2 block" htmlFor="time-estimate">
+              <div className="absolute top-full mt-2 left-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-4 z-50 w-52">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block" htmlFor="time-estimate">
                   Time Estimate
                 </label>
                 <input
@@ -221,7 +229,7 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
                   placeholder="Hours"
                   min="0"
                   step="0.5"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-purple-500 mb-3"
+                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-900 focus:outline-none focus:border-purple-500 mb-3"
                   autoFocus
                   aria-label="Time estimate in hours"
                 />
@@ -231,7 +239,7 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
                       onTimeEstimateChange('');
                       setShowTimeEstimateInput(false);
                     }}
-                    className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="flex-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                     aria-label="Clear time estimate"
                   >
                     Clear
@@ -255,13 +263,34 @@ export const TaskFieldsRow: React.FC<TaskFieldsRowProps> = ({
             onAdd={(name) => onAddChecklist(name)}
           >
             <button
-              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
+              className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600 transition-all"
               aria-label="Add checklist"
             >
               <CheckSquare className="h-3.5 w-3.5" />
               <span>Checklist</span>
             </button>
           </ChecklistPopover>
+        )}
+
+        {/* Recurrence */}
+        {visibleFields.recurring && (
+          <RecurrencePopover
+            value={recurrence}
+            onChange={onRecurrenceChange}
+          >
+            <button
+              className={cn(
+                'inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all',
+                recurrence
+                  ? 'bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300'
+                  : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+              )}
+              aria-label="Set recurrence"
+            >
+              <Repeat className="h-3.5 w-3.5" />
+              <span>{recurrence ? getRecurrenceLabel({ enabled: true, ...recurrence, end_type: recurrence.endType || 'never' }) : 'Recurring'}</span>
+            </button>
+          </RecurrencePopover>
         )}
 
         {/* Add More Fields */}

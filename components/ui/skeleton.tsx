@@ -34,7 +34,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   return (
     <div
       className={cn(
-        'bg-gray-200',
+        'bg-gray-200 dark:bg-gray-700',
         variants[variant],
         animations[animation],
         className
@@ -102,7 +102,7 @@ export const SkeletonInput: React.FC<{ className?: string }> = ({ className }) =
 // ============================================================
 
 export const SkeletonTaskRow: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={cn('flex items-center gap-3 px-4 py-3 border-b border-gray-100', className)}>
+  <div className={cn('flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800', className)}>
     {/* Checkbox */}
     <Skeleton className="h-5 w-5 rounded" />
     
@@ -140,10 +140,10 @@ export const SkeletonTaskList: React.FC<{ rows?: number; showHeader?: boolean }>
   rows = 8,
   showHeader = true 
 }) => (
-  <div className="bg-white rounded-lg border border-gray-200">
+  <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
     {/* Header */}
     {showHeader && (
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-3">
           <Skeleton className="h-5 w-5 rounded" />
           <Skeleton className="h-5 w-32" />
@@ -158,7 +158,7 @@ export const SkeletonTaskList: React.FC<{ rows?: number; showHeader?: boolean }>
     )}
     
     {/* Group Header */}
-    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100">
+    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-800">
       <Skeleton className="h-4 w-4 rounded" />
       <SkeletonBadge className="w-20" />
       <Skeleton className="h-4 w-6 rounded-full" />
@@ -176,7 +176,7 @@ export const SkeletonTaskList: React.FC<{ rows?: number; showHeader?: boolean }>
 // ============================================================
 
 export const SkeletonSidebar: React.FC = () => (
-  <div className="w-64 h-screen bg-white border-r border-gray-200 p-4 space-y-6">
+  <div className="w-64 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-4 space-y-6">
     {/* Logo */}
     <div className="flex items-center gap-2 px-2">
       <Skeleton className="h-8 w-8 rounded-lg" />
@@ -197,7 +197,7 @@ export const SkeletonSidebar: React.FC = () => (
     </div>
     
     {/* Divider */}
-    <div className="border-t border-gray-200 pt-4">
+    <div className="border-t border-gray-200 dark:border-gray-800 pt-4">
       <Skeleton className="h-3 w-16 mb-3 ml-3" />
       
       {/* Workspaces */}
@@ -241,7 +241,7 @@ export const SkeletonSidebar: React.FC = () => (
 // ============================================================
 
 export const SkeletonHeader: React.FC = () => (
-  <div className="h-14 bg-white border-b border-gray-200 px-4 flex items-center justify-between">
+  <div className="h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 flex items-center justify-between">
     {/* Left */}
     <div className="flex items-center gap-4">
       <Skeleton className="h-8 w-8 rounded" />
@@ -269,7 +269,7 @@ export const SkeletonHeader: React.FC = () => (
 // ============================================================
 
 export const SkeletonStatCard: React.FC = () => (
-  <div className="bg-white rounded-xl border border-gray-200 p-5">
+  <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
     <div className="flex items-start justify-between mb-3">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-8 w-8 rounded-lg" />
@@ -325,7 +325,7 @@ export const SkeletonTaskDetail: React.FC = () => (
       </div>
       
       {/* Fields */}
-      <div className="space-y-4 pt-4 border-t border-gray-200">
+      <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4">
             <Skeleton className="h-4 w-20" />
@@ -342,7 +342,7 @@ export const SkeletonTaskDetail: React.FC = () => (
       </div>
       
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-gray-200 pb-2">
+      <div className="flex gap-4 border-b border-gray-200 dark:border-gray-800 pb-2">
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-4 w-20" />
         ))}
@@ -360,7 +360,7 @@ export const SkeletonTaskDetail: React.FC = () => (
     </div>
     
     {/* Right Panel */}
-    <div className="w-80 border-l border-gray-200 p-4 space-y-4">
+    <div className="w-80 border-l border-gray-200 dark:border-gray-800 p-4 space-y-4">
       <Skeleton className="h-6 w-20" />
       
       {/* Activity Items */}
@@ -387,7 +387,7 @@ export const SkeletonTaskDetail: React.FC = () => (
 // ============================================================
 
 export const SkeletonDashboardPage: React.FC = () => (
-  <div className="flex min-h-screen bg-[#FAFBFC]">
+  <div className="flex min-h-screen bg-[#FAFBFC] dark:bg-gray-950">
     <SkeletonSidebar />
     <div className="flex-1 flex flex-col">
       <SkeletonHeader />
@@ -431,7 +431,7 @@ export const SkeletonHomePage: React.FC = () => (
     {/* Quick Actions */}
     <div className="grid grid-cols-3 gap-4">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
+        <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
           <Skeleton className="h-10 w-10 rounded-lg mb-4" />
           <Skeleton className="h-5 w-32 mb-2" />
           <Skeleton className="h-4 w-full" />
@@ -479,11 +479,11 @@ export const SkeletonSettingsPage: React.FC = () => (
     
     {/* Settings Sections */}
     {Array.from({ length: 3 }).map((_, i) => (
-      <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+      <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
         <Skeleton className="h-6 w-40 mb-4" />
         
         {Array.from({ length: 3 }).map((_, j) => (
-          <div key={j} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+          <div key={j} className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-800 last:border-0">
             <div>
               <Skeleton className="h-4 w-32 mb-1" />
               <Skeleton className="h-3 w-48" />
@@ -543,7 +543,7 @@ export const SkeletonCreateTaskForm: React.FC = () => (
 export const SkeletonActivityPanel: React.FC<{ items?: number }> = ({ items = 6 }) => (
   <div className="flex flex-col h-full">
     {/* Header */}
-    <div className="px-4 py-3 border-b border-gray-100">
+    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded" />
@@ -575,7 +575,7 @@ export const SkeletonActivityPanel: React.FC<{ items?: number }> = ({ items = 6 
 export const SkeletonCommentsPanel: React.FC<{ items?: number }> = ({ items = 5 }) => (
   <div className="flex flex-col h-full">
     {/* Header */}
-    <div className="px-4 py-3 border-b border-gray-100">
+    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center gap-2">
         <Skeleton className="h-5 w-5 rounded" />
         <Skeleton className="h-5 w-24" />
@@ -596,7 +596,7 @@ export const SkeletonCommentsPanel: React.FC<{ items?: number }> = ({ items = 5 
             <Skeleton
               className={cn(
                 'h-16 rounded-xl',
-                i % 3 === 0 ? 'bg-purple-100' : 'bg-gray-100'
+                i % 3 === 0 ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-gray-100 dark:bg-gray-800'
               )}
             />
           </div>
@@ -605,7 +605,7 @@ export const SkeletonCommentsPanel: React.FC<{ items?: number }> = ({ items = 5 
     </div>
 
     {/* Input */}
-    <div className="p-3 border-t border-gray-100">
+    <div className="p-3 border-t border-gray-100 dark:border-gray-800">
       <Skeleton className="h-20 w-full rounded-lg" />
     </div>
   </div>
@@ -614,7 +614,7 @@ export const SkeletonCommentsPanel: React.FC<{ items?: number }> = ({ items = 5 
 export const SkeletonHashtagsPanel: React.FC = () => (
   <div className="flex flex-col h-full">
     {/* Header */}
-    <div className="px-4 py-3 border-b border-gray-100">
+    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded" />
@@ -653,7 +653,7 @@ export const SkeletonHashtagsPanel: React.FC = () => (
     </div>
 
     {/* Input */}
-    <div className="p-3 border-t border-gray-100">
+    <div className="p-3 border-t border-gray-100 dark:border-gray-800">
       <Skeleton className="h-16 w-full rounded-lg" />
     </div>
   </div>
@@ -662,7 +662,7 @@ export const SkeletonHashtagsPanel: React.FC = () => (
 export const SkeletonLinksPanel: React.FC = () => (
   <div className="flex flex-col h-full">
     {/* Header */}
-    <div className="px-4 py-3 border-b border-gray-100">
+    <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded" />
@@ -675,7 +675,7 @@ export const SkeletonLinksPanel: React.FC = () => (
     {/* Links */}
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg">
+        <div key={i} className="flex items-center gap-3 p-3 border border-gray-100 dark:border-gray-800 rounded-lg">
           <Skeleton className="h-10 w-10 rounded" />
           <div className="flex-1">
             <Skeleton className="h-4 w-3/4 mb-1" />

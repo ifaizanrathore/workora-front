@@ -3,11 +3,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Search, HelpCircle, ChevronDown, Settings, LogOut, User, Sun, Moon, Keyboard, Flag, X, Menu } from 'lucide-react';
+import { Search, HelpCircle, ChevronDown, Settings, LogOut, User, Sun, Moon, Keyboard, Flag, X, Menu, Sparkles, Loader2 } from 'lucide-react';
 import { cn, getUserInitials, getAvatarColor } from '@/lib/utils';
 import { useAuthStore, useWorkspaceStore, useTaskStore, useUIStore } from '@/stores';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Task } from '@/types';
+import { api } from '@/lib/api';
 import { NotificationCenter } from '@/components/ui/NotificationCenter';
 
 // Priority colors for search results
@@ -32,13 +33,48 @@ export const Header: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [aiSearchMode, setAiSearchMode] = useState(false);
+  const [aiSearchLoading, setAiSearchLoading] = useState(false);
+  const [aiSearchResults, setAiSearchResults] = useState<Task[]>([]);
+  const [aiSearchSummary, setAiSearchSummary] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Filter tasks based on search query
+  // AI Smart Search handler
+  const handleAiSearch = useCallback(async (query: string) => {
+    if (!query.trim() || aiSearchLoading) return;
+    setAiSearchLoading(true);
+    setAiSearchSummary('');
+    try {
+      const taskSummary = tasks.map(t => `[${t.id}] "${t.name}" status:${t.status?.status || 'none'} priority:${t.priority?.priority || 'none'} ${t.assignees?.map(a => a.username || a.email).join(',') || ''} ${t.tags?.map(t => t.name).join(',') || ''} due:${t.due_date ? new Date(Number(t.due_date)).toLocaleDateString() : 'none'}`).join('\n');
+      const result = await api.aiChat([{
+        role: 'user',
+        content: `Given these tasks:\n${taskSummary}\n\nUser query: "${query}"\n\nReturn a JSON code block with the IDs of matching tasks and a short summary. Format:\n\`\`\`json\n{"ids": ["id1", "id2"], "summary": "Found X tasks that..."}\n\`\`\``,
+      }]);
+      const jsonMatch = result.content.match(/```json\s*\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[1]);
+        const matchedIds = new Set(parsed.ids || []);
+        setAiSearchResults(tasks.filter(t => matchedIds.has(t.id)));
+        setAiSearchSummary(parsed.summary || `Found ${matchedIds.size} tasks`);
+      } else {
+        setAiSearchResults([]);
+        setAiSearchSummary(result.content.slice(0, 200));
+      }
+    } catch (err: any) {
+      setAiSearchSummary('AI search failed. Try regular search.');
+      setAiSearchResults([]);
+    } finally {
+      setAiSearchLoading(false);
+    }
+  }, [tasks, aiSearchLoading]);
+
+  // Filter tasks based on search query (regular mode)
   const searchResults = useMemo(() => {
+    if (aiSearchMode && (aiSearchResults.length > 0 || aiSearchSummary)) {
+      return aiSearchResults;
+    }
     if (!searchQuery.trim()) {
-      // Show recent tasks (first 5) when search is empty but open
       return tasks.slice(0, 5);
     }
     const q = searchQuery.toLowerCase().trim();
@@ -49,7 +85,7 @@ export const Header: React.FC = () => {
       if (task.tags?.some(t => (t.name || '').toLowerCase().includes(q))) return true;
       return false;
     }).slice(0, 8);
-  }, [searchQuery, tasks]);
+  }, [searchQuery, tasks, aiSearchMode, aiSearchResults, aiSearchSummary]);
 
   // Reset selected index when results change
   useEffect(() => {
@@ -72,15 +108,21 @@ export const Header: React.FC = () => {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex(prev => Math.max(prev - 1, 0));
-    } else if (e.key === 'Enter' && searchResults[selectedIndex]) {
+    } else if (e.key === 'Enter') {
       e.preventDefault();
-      handleSelectTask(searchResults[selectedIndex]);
+      if (aiSearchMode && searchQuery.trim()) {
+        handleAiSearch(searchQuery);
+      } else if (searchResults[selectedIndex]) {
+        handleSelectTask(searchResults[selectedIndex]);
+      }
     } else if (e.key === 'Escape') {
       setSearchQuery('');
       setIsSearchOpen(false);
+      setAiSearchResults([]);
+      setAiSearchSummary('');
       searchInputRef.current?.blur();
     }
-  }, [searchResults, selectedIndex, handleSelectTask]);
+  }, [searchResults, selectedIndex, handleSelectTask, aiSearchMode, searchQuery, handleAiSearch]);
 
   // Global Ctrl+K to focus search
   useEffect(() => {
@@ -175,12 +217,31 @@ export const Header: React.FC = () => {
               onChange={(e) => { setSearchQuery(e.target.value); setIsSearchOpen(true); }}
               onFocus={() => setIsSearchOpen(true)}
               onKeyDown={handleSearchKeyDown}
-              placeholder={`Search in ${currentWorkspace?.name || 'workspace'}...`}
+              placeholder={aiSearchMode ? 'Ask AI: e.g. "overdue high priority tasks"...' : `Search in ${currentWorkspace?.name || 'workspace'}...`}
               className="flex-1 bg-transparent border-none outline-none text-sm text-[#1A1A2E] dark:text-white placeholder-[#9CA3AF] dark:placeholder-gray-500 ml-2.5"
             />
+            {/* AI Toggle */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setAiSearchMode(!aiSearchMode);
+                setAiSearchResults([]);
+                setAiSearchSummary('');
+                searchInputRef.current?.focus();
+              }}
+              className={cn(
+                'flex items-center justify-center w-6 h-6 rounded-md transition-colors flex-shrink-0',
+                aiSearchMode
+                  ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400'
+                  : 'text-gray-400 dark:text-gray-500 hover:text-purple-500 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+              )}
+              title={aiSearchMode ? 'Switch to regular search' : 'Switch to AI search'}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+            </button>
             {searchQuery ? (
               <button
-                onClick={(e) => { e.stopPropagation(); setSearchQuery(''); searchInputRef.current?.focus(); }}
+                onClick={(e) => { e.stopPropagation(); setSearchQuery(''); setAiSearchResults([]); setAiSearchSummary(''); searchInputRef.current?.focus(); }}
                 className="flex items-center justify-center w-5 h-5 rounded text-[#9CA3AF] hover:text-[#5C5C6D] dark:hover:text-gray-300 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
@@ -197,11 +258,30 @@ export const Header: React.FC = () => {
           {isSearchOpen && (
             <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-[#ECEDF0] dark:border-gray-700 overflow-hidden z-50 max-h-[400px] overflow-y-auto">
               {/* Section Header */}
-              <div className="px-3 py-2 border-b border-[#ECEDF0] dark:border-gray-800">
+              <div className="px-3 py-2 border-b border-[#ECEDF0] dark:border-gray-800 flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-[#9CA3AF] dark:text-gray-500 uppercase tracking-wider">
-                  {searchQuery.trim() ? `Results (${searchResults.length})` : 'Recent Tasks'}
+                  {aiSearchMode ? (aiSearchLoading ? 'AI Searching...' : `AI Results (${searchResults.length})`) : (searchQuery.trim() ? `Results (${searchResults.length})` : 'Recent Tasks')}
                 </span>
+                {aiSearchMode && (
+                  <span className="flex items-center gap-1 text-[10px] text-purple-500 dark:text-purple-400 font-medium">
+                    <Sparkles className="h-3 w-3" />
+                    AI Mode
+                  </span>
+                )}
               </div>
+              {/* AI Loading */}
+              {aiSearchMode && aiSearchLoading && (
+                <div className="flex items-center justify-center py-6 gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Analyzing tasks...</span>
+                </div>
+              )}
+              {/* AI Summary */}
+              {aiSearchMode && aiSearchSummary && !aiSearchLoading && (
+                <div className="px-3 py-2 bg-purple-50/50 dark:bg-purple-900/10 border-b border-[#ECEDF0] dark:border-gray-800">
+                  <p className="text-xs text-purple-700 dark:text-purple-300 leading-relaxed">{aiSearchSummary}</p>
+                </div>
+              )}
 
               {/* Results */}
               {searchResults.length > 0 ? (
@@ -287,7 +367,7 @@ export const Header: React.FC = () => {
                 </span>
                 <span className="flex items-center gap-1">
                   <kbd className="px-1 py-0.5 text-[10px] bg-[#F5F7FA] dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded">↵</kbd>
-                  open
+                  {aiSearchMode ? 'AI search' : 'open'}
                 </span>
                 <span className="flex items-center gap-1">
                   <kbd className="px-1.5 py-0.5 text-[10px] bg-[#F5F7FA] dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded">esc</kbd>

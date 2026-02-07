@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Archive,
   CheckCircle,
+  Repeat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Column } from './TaskListHeader';
@@ -230,12 +231,12 @@ const NameCell: React.FC<{
 }> = ({ task, accountability, width, isEditing, onStartEdit, onSave, onCancel, subtaskCount = 0 }) => {
 
   const circleColor = (i: number) => {
-    if (!accountability) return 'bg-gray-200';
+    if (!accountability) return 'bg-gray-200 dark:bg-gray-600';
     const { status, strikeCount } = accountability;
-    if (status === 'GREEN') return i === 0 ? 'bg-green-500' : 'bg-gray-200';
-    if (status === 'ORANGE') return i < strikeCount ? 'bg-orange-500' : 'bg-gray-200';
+    if (status === 'GREEN') return i === 0 ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600';
+    if (status === 'ORANGE') return i < strikeCount ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-600';
     if (status === 'RED') return 'bg-red-500';
-    return 'bg-gray-200';
+    return 'bg-gray-200 dark:bg-gray-600';
   };
 
   if (isEditing) {
@@ -255,6 +256,11 @@ const NameCell: React.FC<{
       onDoubleClick={(e) => { e.stopPropagation(); onStartEdit(); }}
     >
       <span className="text-sm text-gray-800 dark:text-gray-200 truncate font-medium group-hover/name:text-purple-700 dark:group-hover/name:text-purple-400 transition-colors">{task.name}</span>
+
+      {/* Recurring task badge */}
+      {(task as any).recurrence?.enabled && (
+        <span title="Recurring task"><Repeat className="h-3 w-3 text-purple-500 flex-shrink-0" /></span>
+      )}
 
       {/* Pencil icon: click to rename (visible on hover) */}
       <button
@@ -515,16 +521,20 @@ const TagsCell: React.FC<{
 }> = ({ tags, availableTags = [], width, isEditing, onStartEdit, onAddTag, onRemoveTag, onCancel }) => {
   const list = tags ?? [];
   const tagBg = (t: any) => safeColor(t?.tag_bg, '#e5e7eb');
+  const tagName = (t: any): string => t?.name || t?.tag || '';
 
   return (
     <div className="flex-shrink-0 px-3 py-2 relative" style={{ width }} onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center gap-1 flex-wrap cursor-pointer min-h-[24px]" onClick={onStartEdit}>
         {list.length > 0 ? (
-          list.map((tag) => (
-            <span key={tag.name} className="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate max-w-[90px]" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }} title={tag.name}>
-              {tag.name}
-            </span>
-          ))
+          list.map((tag, idx) => {
+            const name = tagName(tag);
+            return (
+              <span key={name || idx} className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold truncate max-w-[90px] leading-normal" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }} title={name}>
+                {name || 'tag'}
+              </span>
+            );
+          })
         ) : (
           <span className="w-5 h-5 rounded border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-300 dark:text-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-400 dark:hover:text-gray-500 transition-colors text-xs">+</span>
         )}
@@ -535,21 +545,27 @@ const TagsCell: React.FC<{
           {list.length > 0 && (
             <>
               <div className="px-3 py-1 text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold">Current</div>
-              {list.map((tag) => (
-                <button key={tag.name} onClick={() => onRemoveTag(tag.name)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center justify-between group">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }}>{tag.name}</span>
-                  <X className="w-3.5 h-3.5 text-red-400 opacity-0 group-hover:opacity-100" />
-                </button>
-              ))}
+              {list.map((tag, idx) => {
+                const name = tagName(tag);
+                return (
+                  <button key={name || idx} onClick={() => onRemoveTag(name)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center justify-between group">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }}>{name}</span>
+                    <X className="w-3.5 h-3.5 text-red-400 opacity-0 group-hover:opacity-100" />
+                  </button>
+                );
+              })}
               <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
             </>
           )}
           <div className="px-3 py-1 text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold">Add</div>
-          {availableTags.filter((t) => !list.some((ct: any) => ct.name === t.name)).map((tag) => (
-            <button key={tag.name} onClick={() => onAddTag(tag)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }}>{tag.name}</span>
-            </button>
-          ))}
+          {availableTags.filter((t) => !list.some((ct: any) => tagName(ct) === tagName(t))).map((tag) => {
+            const name = tagName(tag);
+            return (
+              <button key={name} onClick={() => onAddTag(tag)} className="w-full px-3 py-1.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ backgroundColor: tagBg(tag), color: contrastText(tagBg(tag)) }}>{name}</span>
+              </button>
+            );
+          })}
           <button onClick={onCancel} className="w-full px-3 py-1.5 text-left text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-t border-gray-100 dark:border-gray-700">Done</button>
         </div>
       )}

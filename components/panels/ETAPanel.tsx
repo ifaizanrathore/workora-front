@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Calendar, AlertCircle, Clock, Info, Shield, CheckCircle2, AlertTriangle, Timer } from 'lucide-react';
+import { Calendar, AlertCircle, Clock, Info, Shield, CheckCircle2, AlertTriangle, Timer, Sparkles, Loader2 } from 'lucide-react';
 import { TaskAccountability, EtaHistoryEntry } from '@/types';
 import { useSetTaskETA, useExtendTaskETA } from '@/hooks';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { api } from '@/lib/api';
+import { useWorkspaceStore } from '@/stores';
 import toast from 'react-hot-toast';
 
 interface ETAPanelProps {
@@ -38,6 +40,33 @@ const formatDate = (dateStr: string | null): string => {
 export const ETAPanel: React.FC<ETAPanelProps> = ({ taskId, accountability }) => {
   const setETA = useSetTaskETA();
   const extendETA = useExtendTaskETA();
+  const { currentList } = useWorkspaceStore();
+  const [aiSuggestion, setAiSuggestion] = useState<{ suggestedEta: string; confidence: string; reasoning: string } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const handleSuggestEta = async () => {
+    setAiLoading(true);
+    try {
+      const result = await api.suggestEta(taskId);
+      setAiSuggestion(result);
+      toast.success('AI ETA suggestion ready');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to get AI suggestion');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleApplyAiEta = async () => {
+    if (!aiSuggestion?.suggestedEta) return;
+    try {
+      await setETA.mutate({ taskId, listId: currentList?.id || '', eta: aiSuggestion.suggestedEta });
+      toast.success('AI-suggested ETA applied');
+      setAiSuggestion(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to apply ETA');
+    }
+  };
 
   // Computed values from real accountability data
   const etaInfo = useMemo(() => {
@@ -95,6 +124,57 @@ export const ETAPanel: React.FC<ETAPanelProps> = ({ taskId, accountability }) =>
             <span className="ml-2 text-xs text-green-600 dark:text-green-400 font-medium">Completed</span>
           )}
         </div>
+      </div>
+
+      {/* AI ETA Suggestion */}
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        {!aiSuggestion ? (
+          <button
+            onClick={handleSuggestEta}
+            disabled={aiLoading}
+            className="flex items-center gap-2 w-full px-3 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-sm font-medium rounded-lg transition-all disabled:opacity-60"
+          >
+            {aiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            {aiLoading ? 'Analyzing task...' : 'Suggest ETA with AI'}
+          </button>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">AI Suggestion</span>
+              <span className={cn(
+                'px-1.5 py-0.5 text-[10px] font-bold rounded-full',
+                aiSuggestion.confidence === 'high' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+                aiSuggestion.confidence === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' :
+                'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+              )}>
+                {aiSuggestion.confidence} confidence
+              </span>
+            </div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-white">
+              {new Date(aiSuggestion.suggestedEta).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{aiSuggestion.reasoning}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleApplyAiEta}
+                className="flex-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                Apply ETA
+              </button>
+              <button
+                onClick={() => setAiSuggestion(null)}
+                className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ETA Info */}
